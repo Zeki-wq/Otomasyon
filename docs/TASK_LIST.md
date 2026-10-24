@@ -30,11 +30,12 @@
 - [x] Faz 3 UI testleri ve ekran görüntüleri tamamlandı.
 - [x] Faz 3 git commit tamamlandı.
 
-## [ ] Faz 4: Kullanıcı Girişi, Cari Hesaplar ve Yedekleme
-- [ ] Giriş ekranı, ilk kurulum sihirbazı ve rol yönetimi (`yonetici`, `personel`).
-- [ ] Müşteri ve cari hesap yönetimi: veresiye bakiyesi, tahsilat girişi, ekstre.
-- [ ] Otomatik ve elle yedekleme servisi, açılışta `PRAGMA quick_check`.
-- [ ] Faz 4 Walkthrough oluşturulup git commit atılacak.
+## [x] Faz 4: Kullanıcı Girişi, Cari Hesaplar ve Yedekleme
+- [x] Giriş ekranı, ilk kurulum sihirbazı ve rol yönetimi (`yonetici`, `personel`): `app/ui/pages/login_dialog.py`.
+- [x] Müşteri ve cari hesap yönetimi: veresiye bakiyesi, tahsilat girişi, ekstre: `app/ui/pages/musteriler_page.py`.
+- [x] Otomatik ve elle yedekleme servisi, açılışta `PRAGMA quick_check`: `app/ui/pages/ayarlar_page.py`.
+- [x] Faz 4 yetkilendirme ve arayüz testleri tamamlandı.
+- [x] Faz 4 git commit tamamlandı.
 
 ## [ ] Faz 5: Raporlar ve Veri İçe/Dışa Aktarımı
 - [ ] Raporlar ekranı: Kasa, ciro, en çok satanlar, kritik stok, stok değeri.

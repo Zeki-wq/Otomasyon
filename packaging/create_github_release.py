@@ -1,5 +1,5 @@
 """
-GitHub Release Oluşturma ve Kurulum Paketini (setup.exe) Yükleme Betiği
+GitHub Release Oluşturma ve Tüm Kurulum Paketlerini (Windows, Debian, Fedora) Yükleme Betiği
 (packaging/create_github_release.py)
 """
 
@@ -19,9 +19,16 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 KOK_DIZIN = Path(__file__).resolve().parent.parent
-SETUP_EXE = KOK_DIZIN / "dist" / "installer" / "OtoYedekParca_Setup_v1.0.0.exe"
+DIST_INSTALLER = KOK_DIZIN / "dist" / "installer"
 REPO = "Zeki-wq/Otomasyon"
 TAG = "v1.0.0-rc1"
+
+ASSET_FILES = [
+    DIST_INSTALLER / "OtoYedekParca_Setup_v1.0.0.exe",
+    DIST_INSTALLER / "otoyedekparca_1.0.0_all.deb",
+    DIST_INSTALLER / "otoyedekparca-1.0.0-fedora-installer.tar.gz",
+    DIST_INSTALLER / "otoyedekparca-1.0.0.tar.gz",
+]
 
 
 def get_token() -> str:
@@ -49,23 +56,57 @@ def file_sha256(path: Path) -> str:
 
 
 def main():
-    if not SETUP_EXE.exists():
-        print(f"[-] HATA: Setup dosyası bulunamadı: {SETUP_EXE}")
-        sys.exit(1)
-
-    dosya_boyutu = SETUP_EXE.stat().st_size
-    boyut_mb = dosya_boyutu / (1024 * 1024)
-    sha256_hash = file_sha256(SETUP_EXE)
-
-    print(f"[*] Kurulum dosyası: {SETUP_EXE.name} ({boyut_mb:.2f} MB)")
-    print(f"[*] SHA-256 Hash   : {sha256_hash}")
-
     token = get_token()
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "User-Agent": "OtoYedekParca-Release-Tool"
     }
+
+    # Dosya kontrolleri
+    available_assets = []
+    print("=" * 70)
+    print("📦 YÜKLENECEK SÜRÜM DOSYALARI DENETLENİYOR")
+    print("=" * 70)
+    for asset_path in ASSET_FILES:
+        if asset_path.exists():
+            size_mb = asset_path.stat().st_size / (1024 * 1024)
+            sha = file_sha256(asset_path)
+            available_assets.append((asset_path, size_mb, sha))
+            print(f"  [+] {asset_path.name:<45} : {size_mb:>6.2f} MB | SHA256: {sha[:16]}...")
+        else:
+            print(f"  [-] EKSİK: {asset_path.name}")
+
+    if not available_assets:
+        print("[-] HATA: Yüklenecek hiçbir paket bulunamadı!")
+        sys.exit(1)
+
+    # Release açıklama metni
+    body_text = (
+        f"## Oto Yedek Parça Otomasyonu v1.0.0-rc1\n\n"
+        f"Oto yedek parça satış ve dükkan yönetimi için geliştirilmiş, yüksek performanslı ve %100 çevrimdışı çalışabilen masaüstü otomasyon paketi.\n\n"
+        f"### 📦 İndirme ve Kurulum Paketleri\n\n"
+        f"| Platform / Dağıtım | Dosya Adı | Boyut | Açıklama |\n"
+        f"| :--- | :--- | :--- | :--- |\n"
+        f"| **Windows 10/11 (64-bit)** | `OtoYedekParca_Setup_v1.0.0.exe` | ~46.5 MB | Inno Setup kurulum sihirbazı (Non-destructive) |\n"
+        f"| **Debian / Ubuntu / Mint** | `otoyedekparca_1.0.0_all.deb` | ~0.1 MB | Standart .deb paketi (`sudo apt install ./...`) |\n"
+        f"| **Fedora / RHEL / CentOS** | `otoyedekparca-1.0.0-fedora-installer.tar.gz` | ~0.1 MB | Otomatik `install.sh` betikli Fedora paketi |\n"
+        f"| **Fedora RPM Kaynak** | `otoyedekparca-1.0.0.tar.gz` | ~0.1 MB | `rpmbuild` ile doğrudan RPM derleme paketi |\n\n"
+        f"### 🔐 Dosya Doğrulama Özetleri (SHA-256)\n"
+    )
+    for asset_path, size_mb, sha in available_assets:
+        body_text += f"- **`{asset_path.name}`**:\n  `{sha}`\n"
+
+    body_text += (
+        f"\n### 🚀 Öne Çıkan Özellikler\n"
+        f"- **PySide6 (Qt 6):** Modern koyu tema, WCAG uyumlu yüksek kontrast, 1366x768 ve High-DPI tam uyumu.\n"
+        f"- **Temiz Veritabanı:** Kurulumda sıfır test verisi; otomatik ilk kurulum sihirbazı.\n"
+        f"- **Veri Koruma:** Yeniden kurulum ve güncellemede veriler ASLA silinmez; şema yükseltmede otomatik yedek ve rollback koruması.\n"
+        f"- **Çapraz Platform Yalıtımı:** Windows'ta `%APPDATA%\\OtoYedekParca`, Linux'ta `~/.otoyedekparca` altında tam yalıtımlı veri.\n"
+        f"- **Hızlı Satış & Stok:** Barkod, OEM, parça kodu anlık arama, sepet yönetimi, veresiye cari hesap ve PDF fiş dökümü.\n"
+        f"- **Güvenli Kaldırma:** Kaldırıcı müşteri veritabanını silmez.\n"
+        f"- **Fabrika Ayarlarına Dönüş:** Yönetici parolası + 'SIFIRLA' onayı ile güvenli sıfırlama.\n"
+    )
 
     # 1. Mevcut release kontrolü
     print(f"\n[*] '{TAG}' için GitHub Release kontrol ediliyor...")
@@ -82,24 +123,9 @@ def main():
         else:
             raise
 
-    # 2. Release oluştur (yoksa)
+    # 2. Release oluştur veya güncelle
     if not release:
         create_url = f"https://api.github.com/repos/{REPO}/releases"
-        body_text = (
-            f"## Oto Yedek Parça Otomasyonu v1.0.0-rc1\n\n"
-            f"Oto yedek parça satış ve dükkan yönetimi için geliştirilmiş, yüksek performanslı ve %100 çevrimdışı çalışabilen masaüstü otomasyon paketi.\n\n"
-            f"### 📦 İndirme ve Kurulum Dosyası\n"
-            f"- **Dosya:** `{SETUP_EXE.name}`\n"
-            f"- **Boyut:** {boyut_mb:.2f} MB\n"
-            f"- **SHA-256 Doğrulama Hash'i:** `{sha256_hash}`\n\n"
-            f"### 🚀 Öne Çıkan Özellikler\n"
-            f"- **PySide6 (Qt 6):** Modern koyu tema, WCAG uyumlu yüksek kontrast, 1366x768 ve High-DPI tam uyumu.\n"
-            f"- **Temiz Veritabanı:** Kurulumda sıfır test verisi; otomatik ilk kurulum sihirbazı.\n"
-            f"- **Veri Koruma:** Yeniden kurulum ve güncellemede veriler ASLA silinmez; şema yükseltmede otomatik yedek ve rollback koruması.\n"
-            f"- **Hızlı Satış & Stok:** Barkod, OEM, parça kodu anlık arama, sepet yönetimi, veresiye cari hesap ve PDF fiş dökümü.\n"
-            f"- **Güvenli Kaldırma:** Kaldırıcı veri silmez (etkileşimli modda varsayılan cevap Hayır'dır).\n"
-            f"- **Fabrika Ayarlarına Dönüş:** Yönetici parolası + 'SIFIRLA' onayı ile güvenli sıfırlama.\n"
-        )
         payload = {
             "tag_name": TAG,
             "target_commitish": "master",
@@ -115,49 +141,76 @@ def main():
         )
         with urllib.request.urlopen(create_req) as r:
             release = json.loads(r.read())
-            print(f"  [+] Yeni Release başarıyla oluşturuldu: ID {release['id']}")
+            print(f"  [+] Yeni Release oluşturuldu: ID {release['id']}")
+    else:
+        # Açıklama metnini güncelle
+        patch_url = f"https://api.github.com/repos/{REPO}/releases/{release['id']}"
+        patch_payload = {
+            "name": f"Oto Yedek Parça Otomasyonu {TAG}",
+            "body": body_text
+        }
+        patch_req = urllib.request.Request(
+            patch_url,
+            data=json.dumps(patch_payload).encode("utf-8"),
+            headers={**headers, "Content-Type": "application/json"},
+            method="PATCH"
+        )
+        with urllib.request.urlopen(patch_req) as r:
+            release = json.loads(r.read())
+            print("  [+] Release açıklama metni güncellendi.")
 
-    release_id = release["id"]
     upload_url_template = release.get("upload_url", "")
     upload_url = upload_url_template.split("{")[0]
 
-    # 3. Mevcut asset kontrolü
-    for existing_asset in release.get("assets", []):
-        if existing_asset["name"] == SETUP_EXE.name:
-            print(f"[*] Eski asset '{SETUP_EXE.name}' siliniyor (ID: {existing_asset['id']})...")
-            del_url = f"https://api.github.com/repos/{REPO}/releases/assets/{existing_asset['id']}"
+    # Mevcut assetleri haritala
+    existing_assets = {a["name"]: a["id"] for a in release.get("assets", [])}
+
+    # 3. Dosyaları release'e yükle
+    uploaded_assets_info = []
+    print("\n" + "=" * 70)
+    print("📤 DOSYALAR GITHUB RELEASE'E YÜKLENİYOR")
+    print("=" * 70)
+
+    for asset_path, size_mb, sha in available_assets:
+        fname = asset_path.name
+        # Varsa eskiyi sil
+        if fname in existing_assets:
+            print(f"[*] Eski '{fname}' siliniyor (Asset ID: {existing_assets[fname]})...")
+            del_url = f"https://api.github.com/repos/{REPO}/releases/assets/{existing_assets[fname]}"
             del_req = urllib.request.Request(del_url, headers=headers, method="DELETE")
-            with urllib.request.urlopen(del_req) as del_r:
+            with urllib.request.urlopen(del_req):
                 pass
-            print("  [+] Eski asset silindi.")
+            print(f"  [+] Eski asset silindi: {fname}")
 
-    # 4. Kurulum dosyasını (setup.exe) release'e yükle
-    print(f"\n[*] '{SETUP_EXE.name}' GitHub Release'e yükleniyor ({boyut_mb:.2f} MB)...")
-    target_upload_url = f"{upload_url}?name={urllib.parse.quote(SETUP_EXE.name)}"
+        # Yükle
+        print(f"[*] Yükleniyor: {fname} ({size_mb:.2f} MB)...")
+        target_upload_url = f"{upload_url}?name={urllib.parse.quote(fname)}"
+        with open(asset_path, "rb") as f:
+            file_data = f.read()
 
-    with open(SETUP_EXE, "rb") as f:
-        file_data = f.read()
-
-    upload_headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/octet-stream",
-        "Content-Length": str(len(file_data)),
-        "User-Agent": "OtoYedekParca-Release-Tool"
-    }
-
-    upload_req = urllib.request.Request(target_upload_url, data=file_data, headers=upload_headers)
-    with urllib.request.urlopen(upload_req) as r:
-        asset_info = json.loads(r.read())
+        upload_headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(len(file_data)),
+            "User-Agent": "OtoYedekParca-Release-Tool"
+        }
+        upload_req = urllib.request.Request(target_upload_url, data=file_data, headers=upload_headers)
+        with urllib.request.urlopen(upload_req) as r:
+            asset_info = json.loads(r.read())
+            uploaded_assets_info.append(asset_info)
+            print(f"  [✓] Yüklendi: {asset_info['name']} -> {asset_info['browser_download_url']}")
 
     print("\n" + "=" * 70)
-    print("🎉 KURULUM PAKETİ GITHUB RELEASE'E BAŞARIYLA YÜKLENDİ!")
+    print("🎉 TÜM DOSYALAR GITHUB RELEASE'E BAŞARIYLA YÜKLENDİ!")
     print("=" * 70)
     print(f"  📌 Release Adı   : {release.get('name')}")
     print(f"  🏷️  Tag           : {release.get('tag_name')}")
-    print(f"  📦 Asset Adı     : {asset_info.get('name')}")
-    print(f"  📊 Boyut         : {asset_info.get('size') / (1024*1024):.2f} MB")
-    print(f"  📥 İndirme Linki : {asset_info.get('browser_download_url')}")
     print(f"  🌐 Release Linki : {release.get('html_url')}")
+    print("\n  📦 Yüklenen Paketler:")
+    for a in uploaded_assets_info:
+        mb = a.get("size", 0) / (1024 * 1024)
+        print(f"     - {a.get('name')} ({mb:.2f} MB)")
+        print(f"       İndirme: {a.get('browser_download_url')}")
     print("=" * 70)
 
 

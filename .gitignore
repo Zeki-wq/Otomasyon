@@ -13,6 +13,7 @@ dist_installer/
 build/
 *.spec
 !packaging/otoyedekparca.spec
+!packaging/fedora/otoyedekparca.spec
 .ruff_cache/
 .env
 .venv

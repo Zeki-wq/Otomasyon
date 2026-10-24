@@ -31,7 +31,7 @@ Oto yedek parça perakende ve toptan satış dükkanları için geliştirilmiş,
 
 | Bileşen | Minimum Gereksinim |
 | :--- | :--- |
-| **İşletim Sistemi** | Windows 10 / Windows 11 (64-bit) |
+| **İşletim Sistemi** | Windows 10/11 (64-bit), Debian/Ubuntu/Mint, Fedora/RHEL/CentOS |
 | **Ekran Çözünürlüğü** | 1366 x 768 piksel |
 | **Bellek (RAM)** | 2 GB RAM |
 | **Depolama** | 150 MB disk alanı (Kurulum için) |
@@ -42,11 +42,27 @@ Oto yedek parça perakende ve toptan satış dükkanları için geliştirilmiş,
 
 ## 🚀 Kurulum ve İlk Çalıştırma
 
+### Windows:
 1. `dist/installer/OtoYedekParca_Setup_v1.0.0.exe` kurulum dosyasını çalıştırınız.
 2. Program kullanıcı profili altına (`%LOCALAPPDATA%\Programs\OtoYedekParca`) kurulur.
 3. Masaüstündeki simgeye tıklayarak programı başlatınız.
-4. İlk açılışta temiz şema otomatik oluşturulur ve **İlk Kurulum Sihirbazı** gelir. Yönetici hesabınızı ve dükkan bilgilerinizi girerek kullanıma başlayabilirsiniz.
+4. İlk açılışta temiz şema otomatik oluşturulur ve **İlk Kurulum Sihirbazı** gelir.
 5. Detaylı rehber için lütfen [docs/KURULUM.md](docs/KURULUM.md) belgesini inceleyiniz.
+
+### Debian / Ubuntu:
+```bash
+sudo apt install ./dist/installer/otoyedekparca_1.0.0_all.deb
+otoyedekparca
+```
+
+### Fedora / RHEL:
+```bash
+tar -xzf dist/installer/otoyedekparca-1.0.0-fedora-installer.tar.gz
+cd otoyedekparca-1.0.0
+sudo ./install.sh
+otoyedekparca
+```
+Detaylı Linux kurulum adımları ve RPM derleme yönergeleri için [docs/LINUX_KURULUM.md](docs/LINUX_KURULUM.md) belgesine bakınız.
 
 ---
 

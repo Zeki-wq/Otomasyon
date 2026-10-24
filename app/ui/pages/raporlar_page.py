@@ -191,13 +191,13 @@ class RaporlarPage(QWidget):
         btn_box = QHBoxLayout()
         self.btn_excel_aktar = QPushButton("📤 Tüm Ürünleri Excel'e Aktar (.xlsx)")
         self.btn_excel_aktar.setObjectName("btnSuccess")
-        self.btn_excel_aktar.setFixedHeight(42)
+        self.btn_excel_aktar.setMinimumHeight(40)
         self.btn_excel_aktar.clicked.connect(self.excele_aktar)
         btn_box.addWidget(self.btn_excel_aktar)
 
         self.btn_excel_yukle = QPushButton("📥 Excel'den Toplu Ürün İçe Aktar (.xlsx)")
         self.btn_excel_yukle.setObjectName("btnWarning")
-        self.btn_excel_yukle.setFixedHeight(42)
+        self.btn_excel_yukle.setMinimumHeight(40)
         self.btn_excel_yukle.clicked.connect(self.excelden_yukle)
         btn_box.addWidget(self.btn_excel_yukle)
 

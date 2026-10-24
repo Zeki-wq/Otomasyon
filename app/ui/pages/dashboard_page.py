@@ -83,18 +83,18 @@ class DashboardPage(QWidget):
 
         btn_hizli_satis = QPushButton("🛒 Yeni Hızlı Satış Aç")
         btn_hizli_satis.setObjectName("btnSuccess")
-        btn_hizli_satis.setFixedHeight(40)
+        btn_hizli_satis.setMinimumHeight(38)
         btn_hizli_satis.clicked.connect(lambda: self.nav_callback and self.nav_callback("satis"))
         btn_bar.addWidget(btn_hizli_satis)
 
         btn_yeni_urun = QPushButton("➕ Yeni Parça Ekle")
-        btn_yeni_urun.setFixedHeight(40)
+        btn_yeni_urun.setMinimumHeight(38)
         btn_yeni_urun.clicked.connect(lambda: self.nav_callback and self.nav_callback("urunler"))
         btn_bar.addWidget(btn_yeni_urun)
 
         btn_tahsilat = QPushButton("💵 Tahsilat / Cari İşlem")
         btn_tahsilat.setObjectName("btnWarning")
-        btn_tahsilat.setFixedHeight(40)
+        btn_tahsilat.setMinimumHeight(38)
         btn_tahsilat.clicked.connect(lambda: self.nav_callback and self.nav_callback("musteriler"))
         btn_bar.addWidget(btn_tahsilat)
 

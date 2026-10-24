@@ -35,7 +35,9 @@ class MusteriDiyalog(QDialog):
         self.musteri_servisi = musteri_servisi
         self.musteri = musteri
         self.setWindowTitle("Müşteri Düzenle" if musteri else "Yeni Müşteri Ekle")
-        self.resize(480, 420)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumSize(500, 540)
+        self.resize(520, 550)
         self.init_ui()
 
     def init_ui(self):
@@ -68,7 +70,7 @@ class MusteriDiyalog(QDialog):
         form.addRow("Vergi No / TCKN:", self.txt_vergi)
 
         self.txt_adres = QTextEdit()
-        self.txt_adres.setMaximumHeight(70)
+        self.txt_adres.setMinimumHeight(65)
         self.txt_adres.setPlaceholderText("Açık adres...")
         form.addRow("Adres:", self.txt_adres)
 
@@ -137,7 +139,9 @@ class TahsilatDiyalog(QDialog):
         self.musteri_servisi = musteri_servisi
         self.aktif_kullanici = aktif_kullanici
         self.setWindowTitle(f"Tahsilat Girişi - {musteri.ad_soyad}")
-        self.resize(420, 360)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumSize(420, 380)
+        self.resize(440, 400)
         self.init_ui()
 
     def init_ui(self):
@@ -229,7 +233,9 @@ class EkstreDiyalog(QDialog):
         self.musteri = musteri
         self.musteri_servisi = musteri_servisi
         self.setWindowTitle(f"Hesap Ekstresi - {musteri.ad_soyad}")
-        self.resize(800, 500)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumSize(780, 480)
+        self.resize(820, 520)
         self.init_ui()
 
     def init_ui(self):
@@ -341,11 +347,13 @@ class MusterilerPage(QWidget):
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.tablo.setAlternatingRowColors(True)
-        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo.horizontalHeader().setMinimumSectionSize(65)
+        m_widths = [50, 220, 115, 130, 110, 105, 180, 75]
+        for col, w in enumerate(m_widths):
+            self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.musteri_duzenle_ac)
-        ana_layout.addWidget(self.tablo)
+        ana_layout.addWidget(self.tablo, stretch=1)
 
         # Alt Butonlar
         alt_bar = QHBoxLayout()

@@ -85,7 +85,7 @@ class SatisPage(QWidget):
         self.spn_adet = QSpinBox()
         self.spn_adet.setRange(1, 1000)
         self.spn_adet.setValue(1)
-        self.spn_adet.setFixedWidth(70)
+        self.spn_adet.setMinimumWidth(80)
         arama_layout.addWidget(self.spn_adet)
 
         self.btn_sepete_ekle = QPushButton("➕ Ekle")
@@ -105,9 +105,12 @@ class SatisPage(QWidget):
         self.tablo_sepet.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo_sepet.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo_sepet.setAlternatingRowColors(True)
-        self.tablo_sepet.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo_sepet.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)  # Ürün adı genişlesin
-        sol_layout.addWidget(self.tablo_sepet)
+        self.tablo_sepet.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo_sepet.horizontalHeader().setMinimumSectionSize(65)
+        sepet_widths = [85, 115, 180, 70, 70, 115, 65, 125]
+        for col, w in enumerate(sepet_widths):
+            self.tablo_sepet.setColumnWidth(col, w)
+        sol_layout.addWidget(self.tablo_sepet, stretch=1)
 
         # Sepet İşlem Butonları
         sepet_btn_layout = QHBoxLayout()
@@ -219,7 +222,7 @@ class SatisPage(QWidget):
         # Satışı Tamamla Butonu
         self.btn_tamamla = QPushButton("✅ SATIŞI ONAYLA (F12)")
         self.btn_tamamla.setObjectName("btnSuccess")
-        self.btn_tamamla.setFixedHeight(48)
+        self.btn_tamamla.setMinimumHeight(44)
         self.btn_tamamla.setStyleSheet("font-size: 12pt; font-weight: bold;")
         self.btn_tamamla.clicked.connect(self.satisi_tamamla)
         sag_layout.addWidget(self.btn_tamamla)

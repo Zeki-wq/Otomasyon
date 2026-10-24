@@ -64,3 +64,17 @@ Bu belge, Oto Yedek Parça Otomasyonu projesinde alınan teknik, mimari ve iş a
 - Orijinal `urunler12.db` dosyasındaki 2 ürün ve 17 sipariş satırı yeni ilişkisel şemaya kayıpsız aktarılır.
 - Eşleşmeyen sipariş ürünleri "silinmiş/tanımsız ürün" olarak ad ve fiyat kopyasıyla korunur.
 - İçe aktarma işlemi idempotent'tir (birden fazla çalıştırıldığında mükerrer kayıt üretmez).
+
+### K8: Arayüz Tipografisi, Boyutlandırma ve Kırpılma Önleme Politikası
+- **Metin Kırpılma Kök Nedeni:** Segoe UI 10pt font yüksekliği 23px (`ascent: 18px`, `descent: 5px`) olup, giriş bileşenlerine verilen aşırı padding (7px 12px) veya pencerelere verilen `setFixedSize` kısıtları kutuları 24-33px aralığına sıkıştırarak metinlerin alt ve üst yarılarının kesilmesine yol açıyordu.
+- **Merkezi Çözüm (`theme.py`):**
+  - Tüm giriş kutuları (`QLineEdit`, `QComboBox`, `QSpinBox`, `QDoubleSpinBox`, `QDateEdit`) ve `QPushButton` için `min-height: 26px`, dikey `padding: 3px` olarak standardize edildi.
+  - Bileşenlere sabit yükseklik (`setFixedHeight`) verilmesi terk edildi; yükseklik içerik ve layout `sizeHint` değerinden türetilir.
+  - QSpinBox/QDateEdit içindeki alt `QLineEdit` bileşeninin çerçevesi ve arka planı sıfırlanarak (`padding: 0px 4px; border: none; background: transparent;`) çift padding ve kutu içi sıkışma giderildi.
+- **Pencere ve Diyalog Boyutları:**
+  - `setFixedSize` yerine `setMinimumSize` ve `resize` kullanılarak işletim sistemi ve DPI ölçeklemelerine (100%, 125%, 150%) uyum sağlandı.
+  - Tüm QDialog pencerelerinde Windows'un işlevsiz `?` (Context Help) butonu `Qt.WindowContextHelpButtonHint` kaldırılarak temizlendi.
+- **Tablo Başlıkları:**
+  - `QHeaderView.ResizeToContents` yerine sütunlara orantılı sabit/etkileşimli genişlikler ve `min-height: 26px; padding: 6px;` verilerek başlık metinlerinin ("Ürün Adı", "Durum" vb.) kırpılması önlendi.
+- **Otomasyonlu Denetim:** `tests/test_ui_no_clipping.py` testi ile her sayfa ve diyalog açıldığında tüm giriş ve buton bileşenlerinin `height >= sizeHint().height() - 1` ve font advance genişlik kuralları denetlenir.
+

@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
 
         for anahtar, metin in menuler:
             btn = QPushButton(metin)
-            btn.setFixedHeight(42)
+            btn.setMinimumHeight(40)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: transparent;
@@ -168,8 +168,8 @@ class MainWindow(QMainWindow):
 
         btn_cikis = QPushButton("Çıkış Yap")
         btn_cikis.setObjectName("btnSecondary")
-        btn_cikis.setFixedHeight(26)
-        btn_cikis.setStyleSheet("font-size: 8.5pt;")
+        btn_cikis.setMinimumHeight(30)
+        btn_cikis.setStyleSheet("font-size: 9pt; padding: 4px;")
         btn_cikis.clicked.connect(self.close)
         u_layout.addWidget(btn_cikis)
 

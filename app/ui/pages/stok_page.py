@@ -87,10 +87,11 @@ class StokPage(QWidget):
             "ID", "Tarih", "Parça Kodu", "Ürün Adı",
             "Hareket Tipi", "Değişim (±)", "Önceki -> Sonraki", "Açıklama"
         ])
-        self.tablo_hareket.setAlternatingRowColors(True)
-        self.tablo_hareket.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tablo_hareket.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo_hareket.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tablo_hareket.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo_hareket.horizontalHeader().setMinimumSectionSize(65)
+        h_widths = [50, 130, 110, 200, 100, 85, 120, 150]
+        for col, w in enumerate(h_widths):
+            self.tablo_hareket.setColumnWidth(col, w)
         h_layout.addWidget(self.tablo_hareket)
 
         self.tabs.addTab(tab_hareket, "📜 Stok Hareket Defteri (Denetim İzi)")
@@ -112,8 +113,11 @@ class StokPage(QWidget):
         ])
         self.tablo_kritik.setAlternatingRowColors(True)
         self.tablo_kritik.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tablo_kritik.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo_kritik.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tablo_kritik.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo_kritik.horizontalHeader().setMinimumSectionSize(65)
+        k_widths = [50, 110, 100, 220, 100, 80, 90, 85]
+        for col, w in enumerate(k_widths):
+            self.tablo_kritik.setColumnWidth(col, w)
         k_layout.addWidget(self.tablo_kritik)
 
         self.tabs.addTab(tab_kritik, "⚠️ Kritik Stok Uyarıları (Sipariş Verilmeli)")

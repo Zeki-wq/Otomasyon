@@ -28,8 +28,14 @@ class LoginDialog(QDialog):
         self.giris_yapan_kullanici = None
 
         self.setWindowTitle("Oto Yedek Parça - Giriş")
-        self.setFixedSize(450, 420)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
         self.init_ui()
+        if self.ilk_kurulum:
+            self.setMinimumSize(460, 500)
+            self.resize(460, 520)
+        else:
+            self.setMinimumSize(440, 420)
+            self.resize(440, 430)
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -96,7 +102,7 @@ class LoginDialog(QDialog):
         btn_layout = QHBoxLayout()
         self.btn_giris = QPushButton("Yöneticiyi Oluştur ve Başla" if self.ilk_kurulum else "Giriş Yap")
         self.btn_giris.setObjectName("btnSuccess")
-        self.btn_giris.setFixedHeight(38)
+        self.btn_giris.setMinimumHeight(38)
         self.btn_giris.clicked.connect(self.islem_yap)
         btn_layout.addWidget(self.btn_giris)
 

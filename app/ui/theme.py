@@ -53,22 +53,57 @@ QLabel#statLabel {
 }
 
 /* Metin Giriş Kutuları */
-QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit {
+QLineEdit, QTextEdit, QPlainTextEdit {
     background-color: #2f3640;
     border: 1.5px solid #3d4451;
-    border-radius: 8px;
-    padding: 7px 12px;
+    border-radius: 6px;
+    padding: 3px 8px;
     color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 10pt;
+    min-height: 26px;
     selection-background-color: #00a8ff;
 }
 
-QLineEdit:focus, QSpinBox:focus, QDateEdit:focus, QComboBox:focus {
+QSpinBox, QDoubleSpinBox, QDateEdit {
+    background-color: #2f3640;
+    border: 1.5px solid #3d4451;
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    min-height: 26px;
+    selection-background-color: #00a8ff;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button, QDateEdit::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #3d4451;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button, QDateEdit::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #3d4451;
+}
+
+QSpinBox QLineEdit, QDoubleSpinBox QLineEdit, QDateEdit QLineEdit {
+    padding: 0px 4px;
+    border: none;
+    background: transparent;
+    min-height: 20px;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus, QComboBox:focus, QTextEdit:focus {
     border: 1.5px solid #00a8ff;
     background-color: #353b48;
 }
 
-QLineEdit:disabled, QComboBox:disabled {
+QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QDateEdit:disabled {
     background-color: #23272e;
     color: #718093;
     border-color: #2f3640;
@@ -78,9 +113,12 @@ QLineEdit:disabled, QComboBox:disabled {
 QComboBox {
     background-color: #2f3640;
     border: 1.5px solid #3d4451;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 3px 8px;
     color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    min-height: 26px;
     min-width: 120px;
 }
 
@@ -106,11 +144,12 @@ QPushButton {
     background-color: #00a8ff;
     color: #ffffff;
     border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
+    border-radius: 6px;
+    padding: 5px 12px;
     font-weight: bold;
+    font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 10pt;
-    min-height: 20px;
+    min-height: 26px;
 }
 
 QPushButton:hover {
@@ -180,8 +219,11 @@ QTableWidget::item:selected, QTableView::item:selected {
 QHeaderView::section {
     background-color: #1f232a;
     color: #00a8ff;
-    padding: 8px;
+    padding: 6px 8px;
     font-weight: bold;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    min-height: 26px;
     border: none;
     border-right: 1px solid #2d333e;
     border-bottom: 2px solid #00a8ff;

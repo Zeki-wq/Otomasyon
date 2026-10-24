@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QFormLayout,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -38,7 +38,9 @@ class UrunDiyalog(QDialog):
         self.urun_servisi = urun_servisi
         self.urun = urun
         self.setWindowTitle("Ürün Düzenle" if urun else "Yeni Ürün Ekle")
-        self.resize(550, 600)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumSize(740, 660)
+        self.resize(750, 680)
         self.init_ui()
 
     def init_ui(self):
@@ -52,26 +54,33 @@ class UrunDiyalog(QDialog):
 
         form_frame = QFrame()
         form_frame.setObjectName("cardFrame")
-        form_layout = QFormLayout(form_frame)
-        form_layout.setSpacing(10)
+        form_grid = QGridLayout(form_frame)
+        form_grid.setSpacing(12)
+        form_grid.setContentsMargins(15, 15, 15, 15)
 
+        # 1. Parça Kodu ve Alış Fiyatı
         self.txt_kod = QLineEdit()
         self.txt_kod.setPlaceholderText("Örn: BRM-001")
-        form_layout.addRow("Parça Kodu (*):", self.txt_kod)
+        form_grid.addWidget(QLabel("Parça Kodu (*):"), 0, 0)
+        form_grid.addWidget(self.txt_kod, 0, 1)
 
+        self.txt_alis = QLineEdit()
+        self.txt_alis.setPlaceholderText("0,00 ₺")
+        form_grid.addWidget(QLabel("Alış Fiyatı:"), 0, 2)
+        form_grid.addWidget(self.txt_alis, 0, 3)
+
+        # 2. Parça Adı ve Satış Fiyatı
         self.txt_ad = QLineEdit()
-        self.txt_ad.setPlaceholderText("Örn: Ön Fren Diski Havalandırmalı")
-        form_layout.addRow("Parça Adı (*):", self.txt_ad)
+        self.txt_ad.setPlaceholderText("Örn: Ön Fren Diski")
+        form_grid.addWidget(QLabel("Parça Adı (*):"), 1, 0)
+        form_grid.addWidget(self.txt_ad, 1, 1)
 
-        self.txt_barkod = QLineEdit()
-        self.txt_barkod.setPlaceholderText("Barkod okutun veya yazın")
-        form_layout.addRow("Barkod:", self.txt_barkod)
+        self.txt_satis = QLineEdit()
+        self.txt_satis.setPlaceholderText("0,00 ₺")
+        form_grid.addWidget(QLabel("Satış Fiyatı (*):"), 1, 2)
+        form_grid.addWidget(self.txt_satis, 1, 3)
 
-        self.txt_oem = QLineEdit()
-        self.txt_oem.setPlaceholderText("Örn: 1K0615301T")
-        form_layout.addRow("OEM Numarası:", self.txt_oem)
-
-        # Marka ve Kategori Seçimi
+        # 3. Marka ve KDV Oranı
         marka_layout = QHBoxLayout()
         self.cmb_marka = QComboBox()
         self.btn_yeni_marka = QPushButton("+")
@@ -79,8 +88,17 @@ class UrunDiyalog(QDialog):
         self.btn_yeni_marka.clicked.connect(self.yeni_marka_ekle)
         marka_layout.addWidget(self.cmb_marka)
         marka_layout.addWidget(self.btn_yeni_marka)
-        form_layout.addRow("Marka:", marka_layout)
+        form_grid.addWidget(QLabel("Marka:"), 2, 0)
+        form_grid.addLayout(marka_layout, 2, 1)
 
+        self.spn_kdv = QSpinBox()
+        self.spn_kdv.setRange(0, 100)
+        self.spn_kdv.setValue(20)
+        self.spn_kdv.setSuffix(" %")
+        form_grid.addWidget(QLabel("KDV Oranı:"), 2, 2)
+        form_grid.addWidget(self.spn_kdv, 2, 3)
+
+        # 4. Kategori ve Stok
         kat_layout = QHBoxLayout()
         self.cmb_kat = QComboBox()
         self.btn_yeni_kat = QPushButton("+")
@@ -88,53 +106,46 @@ class UrunDiyalog(QDialog):
         self.btn_yeni_kat.clicked.connect(self.yeni_kategori_ekle)
         kat_layout.addWidget(self.cmb_kat)
         kat_layout.addWidget(self.btn_yeni_kat)
-        form_layout.addRow("Kategori:", kat_layout)
-
-        # Fiyat ve KDV
-        fiyat_layout = QHBoxLayout()
-        self.txt_alis = QLineEdit()
-        self.txt_alis.setPlaceholderText("0,00 ₺")
-        self.txt_satis = QLineEdit()
-        self.txt_satis.setPlaceholderText("0,00 ₺")
-        fiyat_layout.addWidget(QLabel("Alış:"))
-        fiyat_layout.addWidget(self.txt_alis)
-        fiyat_layout.addWidget(QLabel("Satış (*):"))
-        fiyat_layout.addWidget(self.txt_satis)
-        form_layout.addRow("Fiyatlar:", fiyat_layout)
-
-        kdv_stok_layout = QHBoxLayout()
-        self.spn_kdv = QSpinBox()
-        self.spn_kdv.setRange(0, 100)
-        self.spn_kdv.setValue(20)
-        self.spn_kdv.setSuffix(" %")
+        form_grid.addWidget(QLabel("Kategori:"), 3, 0)
+        form_grid.addLayout(kat_layout, 3, 1)
 
         self.spn_stok = QSpinBox()
         self.spn_stok.setRange(0, 100000)
         self.spn_stok.setValue(0)
-        # Düzenleme modunda açılış stoğu değiştirilemez (stok düzeltme ile yapılır)
         if self.urun:
             self.spn_stok.setEnabled(False)
+        form_grid.addWidget(QLabel("Açılış Stoğu:"), 3, 2)
+        form_grid.addWidget(self.spn_stok, 3, 3)
+
+        # 5. Barkod ve Kritik Stok
+        self.txt_barkod = QLineEdit()
+        self.txt_barkod.setPlaceholderText("Barkod okutun veya yazın")
+        form_grid.addWidget(QLabel("Barkod:"), 4, 0)
+        form_grid.addWidget(self.txt_barkod, 4, 1)
 
         self.spn_kritik = QSpinBox()
         self.spn_kritik.setRange(0, 1000)
         self.spn_kritik.setValue(5)
+        form_grid.addWidget(QLabel("Kritik Stok:"), 4, 2)
+        form_grid.addWidget(self.spn_kritik, 4, 3)
 
-        kdv_stok_layout.addWidget(QLabel("KDV:"))
-        kdv_stok_layout.addWidget(self.spn_kdv)
-        kdv_stok_layout.addWidget(QLabel("Açılış Stok:"))
-        kdv_stok_layout.addWidget(self.spn_stok)
-        kdv_stok_layout.addWidget(QLabel("Kritik Stok:"))
-        kdv_stok_layout.addWidget(self.spn_kritik)
-        form_layout.addRow("Stok & Vergi:", kdv_stok_layout)
+        # 6. OEM No ve Raf / Konum
+        self.txt_oem = QLineEdit()
+        self.txt_oem.setPlaceholderText("Örn: 1K0615301T")
+        form_grid.addWidget(QLabel("OEM Numarası:"), 5, 0)
+        form_grid.addWidget(self.txt_oem, 5, 1)
 
         self.txt_raf = QLineEdit()
         self.txt_raf.setPlaceholderText("Örn: A-12 / Raf 3")
-        form_layout.addRow("Raf / Konum:", self.txt_raf)
+        form_grid.addWidget(QLabel("Raf / Konum:"), 5, 2)
+        form_grid.addWidget(self.txt_raf, 5, 3)
 
+        # 7. Açıklama (Tüm satır)
         self.txt_aciklama = QTextEdit()
-        self.txt_aciklama.setMaximumHeight(60)
+        self.txt_aciklama.setMinimumHeight(60)
         self.txt_aciklama.setPlaceholderText("Uyumlu araçlar veya ek notlar...")
-        form_layout.addRow("Açıklama:", self.txt_aciklama)
+        form_grid.addWidget(QLabel("Açıklama:"), 6, 0)
+        form_grid.addWidget(self.txt_aciklama, 6, 1, 1, 3)
 
         layout.addWidget(form_frame)
 
@@ -379,11 +390,13 @@ class UrunlerPage(QWidget):
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.tablo.setAlternatingRowColors(True)
-        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)  # Ürün adı uzasın
+        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo.horizontalHeader().setMinimumSectionSize(60)
+        widths = [50, 110, 95, 105, 240, 95, 110, 70, 90, 90, 65, 65, 75]
+        for col, w in enumerate(widths):
+            self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.urun_duzenle_ac)
-        ana_layout.addWidget(self.tablo)
+        ana_layout.addWidget(self.tablo, stretch=1)
 
         # 4. Alt İşlem Çubuğu ve Sayfalama
         alt_bar = QHBoxLayout()

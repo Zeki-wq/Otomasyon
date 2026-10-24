@@ -31,7 +31,9 @@ class SiparisDetayDiyalog(QDialog):
         super().__init__(parent)
         self.siparis = siparis
         self.setWindowTitle(f"Sipariş Detayı - {siparis.siparis_no}")
-        self.resize(750, 480)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumSize(750, 480)
+        self.resize(780, 500)
         self.init_ui()
 
     def init_ui(self):
@@ -153,7 +155,7 @@ class SiparislerPage(QWidget):
 
         # Hızlı Tarih Butonları
         self.btn_bugun = QPushButton("Bugün")
-        self.btn_bugun.setFixedWidth(65)
+        self.btn_bugun.setMinimumWidth(75)
         self.btn_bugun.clicked.connect(self.tarih_bugun)
         filtre_layout.addWidget(self.btn_bugun)
 
@@ -186,11 +188,13 @@ class SiparislerPage(QWidget):
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.tablo.setAlternatingRowColors(True)
-        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tablo.horizontalHeader().setMinimumSectionSize(65)
+        sip_widths = [50, 140, 130, 200, 95, 80, 105, 95, 85]
+        for col, w in enumerate(sip_widths):
+            self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.detay_goster)
-        ana_layout.addWidget(self.tablo)
+        ana_layout.addWidget(self.tablo, stretch=1)
 
         # Alt Butonlar
         alt_bar = QHBoxLayout()

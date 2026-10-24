@@ -22,12 +22,13 @@
 - [x] 20.000 sanal ürünle performans ve anlık arama testi (< 100 ms).
 - [x] Faz 2 git commit tamamlandı.
 
-## [ ] Faz 3: Satış, Sepet ve Stok Yönetimi
-- [ ] Çok kalemli sepet ve hızlı satış ekranı: `app/ui/pages/satis_page.py`.
-- [ ] Sipariş listesi ve filtreleme ekranı: `app/ui/pages/siparisler_page.py`.
-- [ ] Sipariş iptal/iade ve stoğu tek transaction içinde geri alma.
-- [ ] Stok hareketleri defteri ve kritik stok uyarı rozetleri.
-- [ ] Faz 3 Walkthrough oluşturulup git commit atılacak.
+## [x] Faz 3: Satış, Sepet ve Stok Yönetimi
+- [x] Çok kalemli sepet ve hızlı satış ekranı: `app/ui/pages/satis_page.py`.
+- [x] Sipariş listesi ve filtreleme ekranı: `app/ui/pages/siparisler_page.py`.
+- [x] Sipariş iptal/iade ve stoğu tek transaction içinde geri alma.
+- [x] Stok hareketleri defteri ve kritik stok uyarı rozetleri: `app/ui/pages/stok_page.py`.
+- [x] Faz 3 UI testleri ve ekran görüntüleri tamamlandı.
+- [x] Faz 3 git commit tamamlandı.
 
 ## [ ] Faz 4: Kullanıcı Girişi, Cari Hesaplar ve Yedekleme
 - [ ] Giriş ekranı, ilk kurulum sihirbazı ve rol yönetimi (`yonetici`, `personel`).

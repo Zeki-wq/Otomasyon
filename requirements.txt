@@ -1,8 +1,10 @@
 # Oto Yedek Parça Otomasyonu - Sabitlenmiş Bağımlılıklar
-PyQt5==5.15.11
+PySide6>=6.5.0
 openpyxl==3.1.5
 reportlab==5.1.0
 pytest==9.1.1
 pytest-qt==4.5.0
 ruff==0.17.2
 pyinstaller==6.22.3
+pip-licenses>=5.0.0
+

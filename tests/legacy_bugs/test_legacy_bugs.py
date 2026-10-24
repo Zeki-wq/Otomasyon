@@ -98,7 +98,7 @@ def test_b3_tablo_30_satir_siniri_ve_sutun_uyusmazligi():
     # satır sayısını artırmaz ve item'ı eklemez (sessizce yutar/gözükmez):
     import sys
 
-    from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
+    from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
 
     app = QApplication.instance() or QApplication(sys.argv)
     table = QTableWidget()

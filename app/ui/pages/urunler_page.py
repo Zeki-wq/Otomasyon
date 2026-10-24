@@ -3,8 +3,8 @@
 50.000 kaleme kadar anlık filtreleme, sayfalama, ekleme, düzenleme ve pasife alma.
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFrame,
@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
 
 from app.domain.models import Urun
 from app.domain.money import kurus_to_tl_str
-from app.domain.validators import sayisal_fiyat_dogrula
+from app.domain.validators import ValidationError, sayisal_fiyat_dogrula
 from app.services.stok_servisi import StokServisi
 from app.services.urun_servisi import UrunServisi
 
@@ -33,14 +33,15 @@ from app.services.urun_servisi import UrunServisi
 class UrunDiyalog(QDialog):
     """Yeni ürün ekleme ve mevcut ürünü düzenleme diyaloğu."""
 
-    def __init__(self, parent=None, urun_servisi: UrunServisi = None, urun: Urun = None):
+    def __init__(self, parent=None, urun_servisi: UrunServisi = None, urun: Urun = None, aktif_kullanici=None):
         super().__init__(parent)
         self.urun_servisi = urun_servisi
         self.urun = urun
+        self.aktif_kullanici = aktif_kullanici
         self.setWindowTitle("Ürün Düzenle" if urun else "Yeni Ürün Ekle")
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumSize(740, 660)
-        self.resize(750, 680)
+        self.setMinimumSize(740, 680)
+        self.resize(750, 700)
         self.init_ui()
 
     def init_ui(self):
@@ -59,26 +60,58 @@ class UrunDiyalog(QDialog):
         form_grid.setContentsMargins(15, 15, 15, 15)
 
         # 1. Parça Kodu ve Alış Fiyatı
+        kod_kutu = QVBoxLayout()
         self.txt_kod = QLineEdit()
         self.txt_kod.setPlaceholderText("Örn: BRM-001")
+        self.txt_kod.textChanged.connect(lambda: self._hata_temizle(self.txt_kod, self.lbl_kod_hata))
+        kod_kutu.addWidget(self.txt_kod)
+        self.lbl_kod_hata = QLabel("")
+        self.lbl_kod_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_kod_hata.setWordWrap(True)
+        self.lbl_kod_hata.hide()
+        kod_kutu.addWidget(self.lbl_kod_hata)
         form_grid.addWidget(QLabel("Parça Kodu (*):"), 0, 0)
-        form_grid.addWidget(self.txt_kod, 0, 1)
+        form_grid.addLayout(kod_kutu, 0, 1)
 
+        alis_kutu = QVBoxLayout()
         self.txt_alis = QLineEdit()
         self.txt_alis.setPlaceholderText("0,00 ₺")
+        self.txt_alis.textChanged.connect(lambda: self._hata_temizle(self.txt_alis, self.lbl_alis_hata))
+        alis_kutu.addWidget(self.txt_alis)
+        self.lbl_alis_hata = QLabel("")
+        self.lbl_alis_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_alis_hata.setWordWrap(True)
+        self.lbl_alis_hata.hide()
+        alis_kutu.addWidget(self.lbl_alis_hata)
         form_grid.addWidget(QLabel("Alış Fiyatı:"), 0, 2)
-        form_grid.addWidget(self.txt_alis, 0, 3)
+        form_grid.addLayout(alis_kutu, 0, 3)
 
         # 2. Parça Adı ve Satış Fiyatı
+        ad_kutu = QVBoxLayout()
         self.txt_ad = QLineEdit()
         self.txt_ad.setPlaceholderText("Örn: Ön Fren Diski")
+        self.txt_ad.textChanged.connect(lambda: self._hata_temizle(self.txt_ad, self.lbl_ad_hata))
+        ad_kutu.addWidget(self.txt_ad)
+        self.lbl_ad_hata = QLabel("")
+        self.lbl_ad_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_ad_hata.setWordWrap(True)
+        self.lbl_ad_hata.hide()
+        ad_kutu.addWidget(self.lbl_ad_hata)
         form_grid.addWidget(QLabel("Parça Adı (*):"), 1, 0)
-        form_grid.addWidget(self.txt_ad, 1, 1)
+        form_grid.addLayout(ad_kutu, 1, 1)
 
+        satis_kutu = QVBoxLayout()
         self.txt_satis = QLineEdit()
         self.txt_satis.setPlaceholderText("0,00 ₺")
+        self.txt_satis.textChanged.connect(lambda: self._hata_temizle(self.txt_satis, self.lbl_satis_hata))
+        satis_kutu.addWidget(self.txt_satis)
+        self.lbl_satis_hata = QLabel("")
+        self.lbl_satis_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_satis_hata.setWordWrap(True)
+        self.lbl_satis_hata.hide()
+        satis_kutu.addWidget(self.lbl_satis_hata)
         form_grid.addWidget(QLabel("Satış Fiyatı (*):"), 1, 2)
-        form_grid.addWidget(self.txt_satis, 1, 3)
+        form_grid.addLayout(satis_kutu, 1, 3)
 
         # 3. Marka ve KDV Oranı
         marka_layout = QHBoxLayout()
@@ -140,12 +173,23 @@ class UrunDiyalog(QDialog):
         form_grid.addWidget(QLabel("Raf / Konum:"), 5, 2)
         form_grid.addWidget(self.txt_raf, 5, 3)
 
-        # 7. Açıklama (Tüm satır)
+        # 7. Durum (Aktif / Pasif)
+        self.cmb_durum = QComboBox()
+        self.cmb_durum.addItem("✅ Aktif", 1)
+        self.cmb_durum.addItem("⛔ Pasif", 0)
+        form_grid.addWidget(QLabel("Durum:"), 6, 0)
+        form_grid.addWidget(self.cmb_durum, 6, 1)
+
+        lbl_durum_ipucu = QLabel("ℹ️ Pasif ürünler satış ekranında listelenmez.")
+        lbl_durum_ipucu.setStyleSheet("color: #718093; font-size: 8.5pt;")
+        form_grid.addWidget(lbl_durum_ipucu, 6, 2, 1, 2)
+
+        # 8. Açıklama (Tüm satır)
         self.txt_aciklama = QTextEdit()
         self.txt_aciklama.setMinimumHeight(60)
         self.txt_aciklama.setPlaceholderText("Uyumlu araçlar veya ek notlar...")
-        form_grid.addWidget(QLabel("Açıklama:"), 6, 0)
-        form_grid.addWidget(self.txt_aciklama, 6, 1, 1, 3)
+        form_grid.addWidget(QLabel("Açıklama:"), 7, 0)
+        form_grid.addWidget(self.txt_aciklama, 7, 1, 1, 3)
 
         layout.addWidget(form_frame)
 
@@ -231,37 +275,94 @@ class UrunDiyalog(QDialog):
         self.txt_raf.setText(self.urun.raf_yeri)
         self.txt_aciklama.setPlainText(self.urun.aciklama)
 
+        durum_idx = self.cmb_durum.findData(self.urun.aktif if self.urun.aktif is not None else 1)
+        if durum_idx >= 0:
+            self.cmb_durum.setCurrentIndex(durum_idx)
+
+        # Pasif ürünü tekrar aktife alma yetkisi yalnızca yöneticidedir
+        is_yonetici = bool(self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici")
+        if self.urun.aktif == 0 and not is_yonetici:
+            self.cmb_durum.setEnabled(False)
+            self.cmb_durum.setToolTip("Yalnızca yönetici pasif ürünü aktife alabilir.")
+
+    def _hata_ayarla(self, widget: QWidget, label: QLabel, mesaj: str):
+        widget.setStyleSheet("border: 1.5px solid #ff4757; background-color: #2d1f24;")
+        label.setText(f"⚠️ {mesaj}")
+        label.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        label.show()
+
+    def _hata_temizle(self, widget: QWidget, label: QLabel):
+        widget.setStyleSheet("")
+        label.setText("")
+        label.hide()
+
     def kaydet(self):
+        ilk_hatali = None
+
+        # 1. Parça Kodu Kontrolü
         kod = self.txt_kod.text().strip().upper()
-        ad = self.txt_ad.text().strip()
-
         if not kod:
-            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen bir parça kodu giriniz.")
-            self.txt_kod.setFocus()
-            return
+            self._hata_ayarla(self.txt_kod, self.lbl_kod_hata, "Lütfen bir parça kodu giriniz.")
+            if not ilk_hatali:
+                ilk_hatali = self.txt_kod
+        else:
+            self._hata_temizle(self.txt_kod, self.lbl_kod_hata)
 
-        if not ad:
-            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen bir parça adı giriniz.")
-            self.txt_ad.setFocus()
-            return
+        # 2. Parça Adı Kontrolü
+        ad = self.txt_ad.text().strip()
+        if not ad or len(ad) < 2:
+            self._hata_ayarla(self.txt_ad, self.lbl_ad_hata, "Parça adı en az 2 karakter olmalıdır.")
+            if not ilk_hatali:
+                ilk_hatali = self.txt_ad
+        else:
+            self._hata_temizle(self.txt_ad, self.lbl_ad_hata)
 
+        # 3. Alış Fiyatı Kontrolü
+        alis_kurus = 0
         try:
             alis_kurus = sayisal_fiyat_dogrula(self.txt_alis.text(), "Alış Fiyatı")
-            satis_kurus = sayisal_fiyat_dogrula(self.txt_satis.text(), "Satış Fiyatı")
-        except ValueError as e:
-            QMessageBox.warning(self, "Geçersiz Fiyat", str(e))
-            return
+            self._hata_temizle(self.txt_alis, self.lbl_alis_hata)
+        except (ValueError, ValidationError) as e:
+            self._hata_ayarla(self.txt_alis, self.lbl_alis_hata, str(e))
+            if not ilk_hatali:
+                ilk_hatali = self.txt_alis
 
-        if satis_kurus <= 0:
-            QMessageBox.warning(self, "Geçersiz Fiyat", "Satış fiyatı 0'dan büyük olmalıdır.")
-            self.txt_satis.setFocus()
+        # 4. Satış Fiyatı Kontrolü
+        satis_kurus = 0
+        try:
+            satis_kurus = sayisal_fiyat_dogrula(self.txt_satis.text(), "Satış Fiyatı")
+            if satis_kurus <= 0:
+                self._hata_ayarla(self.txt_satis, self.lbl_satis_hata, "Satış fiyatı 0'dan büyük olmalıdır.")
+                if not ilk_hatali:
+                    ilk_hatali = self.txt_satis
+            else:
+                self._hata_temizle(self.txt_satis, self.lbl_satis_hata)
+        except (ValueError, ValidationError) as e:
+            self._hata_ayarla(self.txt_satis, self.lbl_satis_hata, str(e))
+            if not ilk_hatali:
+                ilk_hatali = self.txt_satis
+
+        # Hatalı alan varsa diyalog açık kalır ve ilk alana odaklanır
+        if ilk_hatali:
+            ilk_hatali.setFocus()
             return
 
         kategori_id = self.cmb_kat.currentData()
         marka_id = self.cmb_marka.currentData()
+        yeni_aktif = self.cmb_durum.currentData()
+        if yeni_aktif is None:
+            yeni_aktif = 1
+        kullanici_id = self.aktif_kullanici.id if self.aktif_kullanici else None
 
         try:
             if self.urun:
+                eski_aktif = self.urun.aktif
+                if eski_aktif == 0 and yeni_aktif == 1:
+                    is_yonetici = bool(self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici")
+                    if not is_yonetici:
+                        QMessageBox.warning(self, "Yetkisiz İşlem", "Yalnızca yönetici pasif ürünü aktife alabilir.")
+                        return
+
                 # Güncelleme
                 self.urun.parca_kodu = kod
                 self.urun.ad = ad
@@ -275,8 +376,17 @@ class UrunDiyalog(QDialog):
                 self.urun.kritik_stok = self.spn_kritik.value()
                 self.urun.raf_yeri = self.txt_raf.text().strip()
                 self.urun.aciklama = self.txt_aciklama.toPlainText().strip()
+                self.urun.aktif = yeni_aktif
 
                 self.urun_servisi.urun_guncelle(self.urun)
+
+                # Durum değiştiyse denetim ve hareket kaydını da oluştur
+                if eski_aktif != yeni_aktif:
+                    if yeni_aktif == 1:
+                        self.urun_servisi.urun_aktife_al(self.urun.id, kullanici_id=kullanici_id)
+                    else:
+                        self.urun_servisi.urun_pasife_al(self.urun.id, kullanici_id=kullanici_id)
+
                 QMessageBox.information(self, "Başarılı", "Ürün bilgileri başarıyla güncellendi.")
             else:
                 # Yeni Ekleme
@@ -294,12 +404,16 @@ class UrunDiyalog(QDialog):
                     stok=self.spn_stok.value(),
                     kritik_stok=self.spn_kritik.value(),
                     raf_yeri=self.txt_raf.text().strip(),
-                    aciklama=self.txt_aciklama.toPlainText().strip()
+                    aciklama=self.txt_aciklama.toPlainText().strip(),
+                    aktif=yeni_aktif
                 )
                 self.urun_servisi.urun_ekle(yeni)
                 QMessageBox.information(self, "Başarılı", f"'{ad}' başarıyla depoya eklendi.")
 
             self.accept()
+        except ValidationError as ve:
+            self._hata_ayarla(self.txt_kod, self.lbl_kod_hata, str(ve))
+            self.txt_kod.setFocus()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
 
@@ -601,8 +715,8 @@ class UrunlerPage(QWidget):
         return int(self.tablo.item(satir, 0).text())
 
     def yeni_urun_ac(self):
-        diyalog = UrunDiyalog(self, self.urun_servisi)
-        if diyalog.exec_() == QDialog.Accepted:
+        diyalog = UrunDiyalog(self, self.urun_servisi, aktif_kullanici=self.aktif_kullanici)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def urun_duzenle_ac(self):
@@ -616,8 +730,8 @@ class UrunlerPage(QWidget):
             QMessageBox.critical(self, "Hata", "Ürün bulunamadı.")
             return
 
-        diyalog = UrunDiyalog(self, self.urun_servisi, urun)
-        if diyalog.exec_() == QDialog.Accepted:
+        diyalog = UrunDiyalog(self, self.urun_servisi, urun, aktif_kullanici=self.aktif_kullanici)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def urun_pasife_al(self):
@@ -646,6 +760,10 @@ class UrunlerPage(QWidget):
             self.listeyi_guncelle()
 
     def urun_aktife_al(self):
+        if not (self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici"):
+            QMessageBox.warning(self, "Yetkisiz İşlem", "Yalnızca yönetici pasif ürünü aktife alabilir.")
+            return
+
         u_id = self.secili_urun_id()
         if not u_id:
             QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen aktife almak istediğiniz ürünü seçiniz.")

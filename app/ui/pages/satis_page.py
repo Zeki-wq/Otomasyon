@@ -4,8 +4,8 @@ Barkod okuyucu destekli, çok kalemli sepet, klavye dostu ve anında stok kontro
 """
 
 
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
     QFrame,
@@ -87,6 +87,7 @@ class SatisPage(QWidget):
         self.spn_adet.setRange(1, 1000)
         self.spn_adet.setValue(1)
         self.spn_adet.setMinimumWidth(80)
+        self.spn_adet.setMinimumHeight(38)
         arama_layout.addWidget(self.spn_adet)
 
         self.btn_sepete_ekle = QPushButton("➕ Ekle")
@@ -329,7 +330,7 @@ class SatisPage(QWidget):
         btn_box.rejected.connect(diyalog.reject)
         d_layout.addWidget(btn_box)
 
-        if diyalog.exec_() == QtWidgets.QDialog.Accepted:
+        if diyalog.exec() == QtWidgets.QDialog.Accepted:
             row = liste.currentRow()
             if row >= 0:
                 return urunler[row]

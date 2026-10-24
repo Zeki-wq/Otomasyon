@@ -27,7 +27,7 @@ def satis_test_db(tmp_path):
 
 
 def test_satis_ve_siparis_iptal_dongusu_ui(qtbot, satis_test_db, monkeypatch):
-    from PyQt5.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
     monkeypatch.setattr(QMessageBox, "information", lambda *args, **kwargs: QMessageBox.Ok)
     monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.Ok)
     monkeypatch.setattr(QMessageBox, "critical", lambda *args, **kwargs: QMessageBox.Ok)

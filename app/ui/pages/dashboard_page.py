@@ -4,8 +4,8 @@ Ana Panel (Dashboard) - Özet İstatistikler ve Hızlı Kısayollar
 
 from datetime import date
 
-from PyQt5 import QtGui, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtGui, QtWidgets
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,

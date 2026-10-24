@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.db.connection import get_db_connection
 from app.domain.models import Kategori, Marka, Urun
+from app.domain.validators import ValidationError
 
 
 class UrunServisi:
@@ -19,13 +20,13 @@ class UrunServisi:
         ad = str(urun.ad or "").strip()
 
         if not parca_kodu:
-            raise ValueError("Parça kodu boş bırakılamaz.")
-        if not ad:
-            raise ValueError("Ürün adı boş bırakılamaz.")
+            raise ValidationError("Parça kodu boş bırakılamaz.")
+        if not ad or len(ad) < 2:
+            raise ValidationError("Ürün adı en az 2 karakter olmalıdır.")
         if urun.stok < 0:
-            raise ValueError("Stok miktarı negatif olamaz.")
+            raise ValidationError("Stok miktarı negatif olamaz.")
         if urun.satis_fiyati_kurus < 0:
-            raise ValueError("Satış fiyatı negatif olamaz.")
+            raise ValidationError("Satış fiyatı negatif olamaz.")
 
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -75,14 +76,14 @@ class UrunServisi:
     def urun_guncelle(self, urun: Urun, kullanici_id: int | None = None) -> bool:
         """Ürün bilgilerini günceller (stok doğrudan buradan güncellenmez, stok_servisi ile düzeltilir)."""
         if not urun.id:
-            raise ValueError("Güncellenecek ürünün ID'si belirtilmelidir.")
+            raise ValidationError("Güncellenecek ürünün ID'si belirtilmelidir.")
 
         parca_kodu = str(urun.parca_kodu or "").strip().upper()
         ad = str(urun.ad or "").strip()
         if not parca_kodu:
-            raise ValueError("Parça kodu boş bırakılamaz.")
-        if not ad:
-            raise ValueError("Ürün adı boş bırakılamaz.")
+            raise ValidationError("Parça kodu boş bırakılamaz.")
+        if not ad or len(ad) < 2:
+            raise ValidationError("Ürün adı en az 2 karakter olmalıdır.")
 
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -101,7 +102,8 @@ class UrunServisi:
                         kdv_orani = ?,
                         kritik_stok = ?,
                         raf_yeri = ?,
-                        aciklama = ?
+                        aciklama = ?,
+                        aktif = ?
                     WHERE id = ?
                 """, (
                     parca_kodu,
@@ -116,6 +118,7 @@ class UrunServisi:
                     urun.kritik_stok,
                     str(urun.raf_yeri or "").strip(),
                     str(urun.aciklama or "").strip(),
+                    0 if urun.aktif == 0 else 1,
                     urun.id
                 ))
             conn.close()

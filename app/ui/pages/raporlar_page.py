@@ -5,8 +5,8 @@ Kasa, Ciro, Satış Analizi, En Çok Satanlar ve Excel Veri Ekranı
 from datetime import date
 from pathlib import Path
 
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtWidgets import (
     QDateEdit,
     QFileDialog,
     QFrame,
@@ -166,6 +166,7 @@ class RaporlarPage(QWidget):
         self.tablo_top.setColumnCount(4)
         self.tablo_top.setHorizontalHeaderLabels(["Sıra", "Parça Kodu", "Parça Adı", "Toplam Satılan Adet", "Toplam Ciro (₺)"])
         self.tablo_top.setAlternatingRowColors(True)
+        self.tablo_top.horizontalHeader().setMinimumSectionSize(140)
         self.tablo_top.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.tablo_top.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         top_layout.addWidget(self.tablo_top)

@@ -2,8 +2,8 @@
 Stok Hareketleri, Envanter Değeri ve Kritik Stok Uyarı Ekranı
 """
 
-from PyQt5 import QtGui, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtGui, QtWidgets
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,

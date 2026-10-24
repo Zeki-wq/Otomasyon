@@ -6,7 +6,7 @@ Giriş sihirbazı, cari hesaplar, tahsilat, rol kısıtlamaları, yedekleme ve e
 from pathlib import Path
 
 import pytest
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from app.db.migrations.migrator import run_migrations
 from app.domain.models import Kullanici, Musteri

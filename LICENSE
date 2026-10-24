@@ -1,0 +1,15 @@
+TELİF HAKKI VE TESCİLLİ YAZILIM LİSANS SÖZLEŞMESİ (PROPRIETARY LICENSE)
+
+Telif Hakkı (C) 2026 Oto Yedek Parça Otomasyonu. Tüm Hakları Saklıdır.
+
+ÖNEMLİ BİLGİ:
+Bu yazılım ve ilgili tüm belgeler ("Yazılım"), tescilli ve ticari bir yazılım ürünüdür.
+Yazılımın mülkiyeti, fikri ve sınai mülkiyet hakları münhasıran hak sahibine aittir.
+
+KULLANIM VE DAĞITIM KOŞULLARI:
+1. Yetkilendirme: Bu yazılım, yalnızca geçerli bir ticari lisans veya pilot kullanım sözleşmesi kapsamında kurulabilir ve çalıştırılabilir.
+2. Yeniden Dağıtım Yasağı: Yazılımın kaynak kodları veya ikili (binary) paketleri, hak sahibinin yazılı izni olmaksızın üçüncü şahıslara satılamaz, kiralanamaz, devredilemez, alt lisans verilemez veya kamuya açık ortamlarda dağıtılamaz.
+3. Tersine Mühendislik: Yürürlükteki mevzuatın ve üçüncü taraf LGPL bileşenlerinin (PySide6) izin verdiği zorunlu hata ayıklama ve yeniden bağlama halleri haricinde; yazılımın kaynak kodunu çıkarma, tersine mühendislik yapma, parçalama veya türev ürünler oluşturma girişimleri yasaktır.
+4. Garanti Reddi: Yazılım, ticari teamüllere uygun olarak "OLDUĞU GİBİ" (AS IS) sağlanmaktadır. Hak sahibi, yazılımın kesintisiz veya tamamen hatasız çalışacağını taahhüt etmez; veri kaybı veya dolaylı ticari zararlardan sorumlu tutulamaz. Kullanıcıların düzenli yedekleme yapması esastır.
+
+Üçüncü taraf açık kaynak bileşenlerin lisansları için lütfen THIRD_PARTY_LICENSES.md dosyasını inceleyiniz.

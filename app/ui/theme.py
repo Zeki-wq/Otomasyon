@@ -69,7 +69,7 @@ QSpinBox, QDoubleSpinBox, QDateEdit {
     background-color: #2f3640;
     border: 1.5px solid #3d4451;
     border-radius: 6px;
-    padding: 2px 6px;
+    padding: 1px 6px;
     color: #ffffff;
     font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 10pt;
@@ -207,6 +207,11 @@ QTableWidget, QTableView {
     outline: none;
 }
 
+QTableWidget::viewport, QTableView::viewport {
+    background-color: #1e222a;
+    color: #f5f6fa;
+}
+
 QTableWidget::item, QTableView::item {
     padding: 8px;
     border-bottom: 1px solid #2d333e;
@@ -223,6 +228,15 @@ QTableWidget::item:selected, QTableView::item:selected {
 }
 
 QHeaderView {
+    background-color: #181b21;
+    border: none;
+}
+
+QHeaderView::viewport {
+    background-color: #181b21;
+}
+
+QHeaderView:vertical, QHeaderView:horizontal {
     background-color: #181b21;
     border: none;
 }

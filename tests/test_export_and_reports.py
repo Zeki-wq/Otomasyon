@@ -7,7 +7,7 @@ from pathlib import Path
 
 import openpyxl
 import pytest
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from app.db.migrations.migrator import run_migrations
 from app.domain.models import Siparis, SiparisKalem

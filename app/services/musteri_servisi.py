@@ -80,7 +80,8 @@ class MusteriServisi:
                     telefon = ?,
                     eposta = ?,
                     adres = ?,
-                    vergi_no_tc = ?
+                    vergi_no_tc = ?,
+                    aktif = ?
                 WHERE id = ?
             """, (
                 ad_soyad,
@@ -88,6 +89,7 @@ class MusteriServisi:
                 eposta,
                 adres,
                 v_tc,
+                0 if musteri.aktif == 0 else 1,
                 musteri.id
             ))
         conn.close()
@@ -99,6 +101,15 @@ class MusteriServisi:
         cur = conn.cursor()
         with conn:
             cur.execute("UPDATE musteri SET aktif = 0 WHERE id = ?", (musteri_id,))
+        conn.close()
+        return True
+
+    def musteri_aktife_al(self, musteri_id: int) -> bool:
+        """Pasife alınmış müşteriyi tekrar aktife alır."""
+        conn = get_db_connection(self.db_path)
+        cur = conn.cursor()
+        with conn:
+            cur.execute("UPDATE musteri SET aktif = 1 WHERE id = ?", (musteri_id,))
         conn.close()
         return True
 

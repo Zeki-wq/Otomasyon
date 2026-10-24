@@ -5,8 +5,8 @@ bileşenlerinin yüksekliklerinin ve metin genişliklerinin tam sığdığını,
 metinlerin üstten/alttan/yandan kırpılmadığını ve '?' yardım butonunun kapatıldığını doğrular.
 """
 
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore
+from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
     QDialog,

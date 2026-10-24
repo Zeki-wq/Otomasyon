@@ -58,7 +58,7 @@ def install_exception_handler():
 
         # Eğer Qt çalışıyorsa şık bir hata diyaloğu göster
         try:
-            from PyQt5.QtWidgets import QApplication, QMessageBox
+            from PySide6.QtWidgets import QApplication, QMessageBox
             app = QApplication.instance()
             if app:
                 msg = QMessageBox()
@@ -67,7 +67,7 @@ def install_exception_handler():
                 msg.setText("Uygulamada beklenmeyen bir hata oluştu.")
                 msg.setInformativeText(f"{exc_type.__name__}: {exc_value}\n\nDetaylar log dosyasına kaydedildi.")
                 msg.setStandardButtons(QMessageBox.Ok)
-                msg.exec_()
+                msg.exec()
         except Exception:
             pass
 

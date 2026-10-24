@@ -222,7 +222,7 @@ def test_sorun4_tc_ve_telefon_dogrulama():
 
 def test_sorun1_ui_pasif_urun_aktife_alma(qtbot, tmp_path, monkeypatch):
     """SORUN 1 UI Testi: Ürünler sayfasında pasif filtreleme, satır durumu ve aktife alma butonu."""
-    from PyQt5.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     from app.ui.pages.urunler_page import UrunlerPage
 
@@ -278,7 +278,7 @@ def test_sorun1_ui_pasif_urun_aktife_alma(qtbot, tmp_path, monkeypatch):
 
 def test_sorun2_ui_satis_sayfasi_adet_artisi_ve_anlik_guncelleme(qtbot, tmp_path, monkeypatch):
     """SORUN 2 UI Testi: Sepette adet 1'den 40'a çıkarılınca satır ve genel toplamlar anında güncellenmeli."""
-    from PyQt5.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     from app.ui.pages.satis_page import SatisPage
 
@@ -339,7 +339,7 @@ def test_sorun2_ui_satis_sayfasi_adet_artisi_ve_anlik_guncelleme(qtbot, tmp_path
 
 def test_sorun3_ui_siparisler_sayfasi_ve_detay_iptal(qtbot, tmp_path, monkeypatch):
     """SORUN 3 UI Testi: Siparişler tablosunda Kalem/Toplam Adet sütunları, ürün araması ve detaydan iptal."""
-    from PyQt5.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     from app.ui.pages.siparisler_page import SiparisDetayDiyalog, SiparislerPage
 

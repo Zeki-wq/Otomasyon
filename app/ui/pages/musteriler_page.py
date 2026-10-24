@@ -2,8 +2,8 @@
 Müşteri (Cari Hesap), Tahsilat ve Hesap Ekstresi Ekranı
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
     QDialog,
@@ -35,6 +35,7 @@ from app.domain.validators import (
     vergi_veya_tc_dogrula,
 )
 from app.services.musteri_servisi import MusteriServisi
+from app.ui.theme import apply_theme
 
 
 class MusteriDiyalog(QDialog):
@@ -143,6 +144,14 @@ class MusteriDiyalog(QDialog):
         self.txt_adres.setPlaceholderText("Açık adres...")
         form.addRow(lbl_adres, self.txt_adres)
 
+        # Hesap Durumu (Aktif / Pasif)
+        lbl_durum = QLabel("Hesap Durumu:")
+        lbl_durum.setMinimumWidth(140)
+        self.cmb_durum = QComboBox()
+        self.cmb_durum.addItem("✅ Aktif", 1)
+        self.cmb_durum.addItem("⛔ Pasif", 0)
+        form.addRow(lbl_durum, self.cmb_durum)
+
         layout.addWidget(kart)
 
         btn_layout = QHBoxLayout()
@@ -175,12 +184,31 @@ class MusteriDiyalog(QDialog):
 
             self.txt_adres.setPlainText(self.musteri.adres)
 
-            # Mevcut geçersiz veriler varsa formu açınca hataları göster
-            gecerli, hatalar = musteri_gecerli_mi(self.musteri)
-            if not gecerli:
-                self.lbl_vergi_hata.setText("⚠️ Mevcut kayıt hatalı bilgi içeriyor. Lütfen düzelterek kaydediniz.")
-                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
-                self.lbl_vergi_hata.show()
+            durum_idx = self.cmb_durum.findData(self.musteri.aktif if self.musteri.aktif is not None else 1)
+            if durum_idx >= 0:
+                self.cmb_durum.setCurrentIndex(durum_idx)
+
+            # Mevcut geçersiz veriler varsa formu açınca her hatalı alanı kırmızı vurgula ve mesajını göster
+            ad_val = str(self.musteri.ad_soyad or "").strip()
+            if len(ad_val) < 2:
+                self._hata_ayarla(self.txt_ad, self.lbl_ad_hata, "Müşteri adı veya firma ünvanı en az 2 karakter olmalıdır!")
+
+            tel_val = str(self.musteri.telefon or "").strip()
+            if tel_val:
+                try:
+                    telefon_dogrula_ve_normalize(tel_val)
+                except ValidationError as e:
+                    self._hata_ayarla(self.txt_tel, self.lbl_tel_hata, str(e))
+
+            eposta_val = str(self.musteri.eposta or "").strip()
+            if eposta_val and not eposta_dogrula(eposta_val):
+                self._hata_ayarla(self.txt_eposta, self.lbl_eposta_hata, "Geçersiz e-posta formatı (örn: info@firma.com)!")
+
+            v_val = str(self.musteri.vergi_no_tc or "").strip()
+            if v_val:
+                gecerli_v, aciklama_v = vergi_veya_tc_dogrula(v_val)
+                if not gecerli_v:
+                    self._hata_ayarla(self.txt_vergi, self.lbl_vergi_hata, aciklama_v)
 
     def _hata_ayarla(self, widget: QWidget, label: QLabel, mesaj: str):
         widget.setStyleSheet("border: 1.5px solid #ff4757; background-color: #2d1f24;")
@@ -271,6 +299,10 @@ class MusteriDiyalog(QDialog):
             ilk_hatali.setFocus()
             return
 
+        yeni_durum = self.cmb_durum.currentData()
+        if yeni_durum is None:
+            yeni_durum = 1
+
         try:
             if self.musteri:
                 self.musteri.ad_soyad = ad
@@ -278,6 +310,7 @@ class MusteriDiyalog(QDialog):
                 self.musteri.eposta = eposta
                 self.musteri.vergi_no_tc = vergi_tc
                 self.musteri.adres = self.txt_adres.toPlainText().strip()
+                self.musteri.aktif = yeni_durum
                 self.musteri_servisi.musteri_guncelle(self.musteri)
                 QMessageBox.information(self, "Başarılı", "Müşteri bilgileri güncellendi.")
             else:
@@ -287,7 +320,8 @@ class MusteriDiyalog(QDialog):
                     telefon=tel,
                     eposta=eposta,
                     vergi_no_tc=vergi_tc,
-                    adres=self.txt_adres.toPlainText().strip()
+                    adres=self.txt_adres.toPlainText().strip(),
+                    aktif=yeni_durum
                 )
                 self.musteri_servisi.musteri_ekle(yeni)
                 QMessageBox.information(self, "Başarılı", f"'{ad}' cari hesabı açıldı.")
@@ -505,7 +539,9 @@ class MusterilerPage(QWidget):
         filtre_layout.addWidget(self.txt_ara, stretch=3)
 
         self.cmb_filtre_durum = QComboBox()
-        self.cmb_filtre_durum.addItem("Tüm Müşteriler", "tumu")
+        self.cmb_filtre_durum.addItem("Tüm Müşteriler (Aktif + Pasif)", "tumu")
+        self.cmb_filtre_durum.addItem("✅ Yalnızca Aktifler", "aktif")
+        self.cmb_filtre_durum.addItem("⛔ Yalnızca Pasifler", "pasif")
         self.cmb_filtre_durum.addItem("Yalnızca Geçerli Kayıtlar", "gecerli")
         self.cmb_filtre_durum.addItem("⚠️ Yalnızca Hatalı Kayıtlar", "hatali")
         self.cmb_filtre_durum.currentIndexChanged.connect(self.listeyi_guncelle)
@@ -530,6 +566,7 @@ class MusterilerPage(QWidget):
         for col, w in enumerate(m_widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.musteri_duzenle_ac)
+        self.tablo.itemSelectionChanged.connect(self.satir_secildi)
         ana_layout.addWidget(self.tablo, stretch=1)
 
         # Alt Butonlar
@@ -554,15 +591,39 @@ class MusterilerPage(QWidget):
         self.btn_sil.clicked.connect(self.musteri_pasife_al)
         alt_bar.addWidget(self.btn_sil)
 
+        self.btn_aktife_al = QPushButton("♻️ Aktife Al")
+        self.btn_aktife_al.setObjectName("btnSuccess")
+        self.btn_aktife_al.clicked.connect(self.musteri_aktife_al)
+        self.btn_aktife_al.hide()
+        alt_bar.addWidget(self.btn_aktife_al)
+
         alt_bar.addStretch()
         self.lbl_sayi = QLabel("Toplam 0 müşteri")
         alt_bar.addWidget(self.lbl_sayi)
 
         ana_layout.addLayout(alt_bar)
 
+    def satir_secildi(self):
+        m_id = self.secili_musteri_id()
+        if not m_id:
+            self.btn_aktife_al.hide()
+            self.btn_sil.show()
+            return
+
+        musteri = self.musteri_servisi.musteri_getir(m_id)
+        if not musteri:
+            return
+
+        if musteri.aktif == 0:
+            self.btn_sil.hide()
+            self.btn_aktife_al.show()
+        else:
+            self.btn_aktife_al.hide()
+            self.btn_sil.show()
+
     def listeyi_guncelle(self):
         terim = self.txt_ara.text().strip()
-        musteriler = self.musteri_servisi.musterileri_getir(arama_metni=terim)
+        musteriler = self.musteri_servisi.musterileri_getir(arama_metni=terim, sadece_aktif=False)
         filtre_durum = self.cmb_filtre_durum.currentData() if hasattr(self, "cmb_filtre_durum") else "tumu"
 
         self.tablo.setRowCount(0)
@@ -570,6 +631,10 @@ class MusterilerPage(QWidget):
             gecerli, hatalar = musteri_gecerli_mi(m)
 
             # Filtreye göre ele
+            if filtre_durum == "aktif" and m.aktif != 1:
+                continue
+            if filtre_durum == "pasif" and m.aktif != 0:
+                continue
             if filtre_durum == "hatali" and gecerli:
                 continue
             if filtre_durum == "gecerli" and not gecerli:
@@ -577,33 +642,31 @@ class MusterilerPage(QWidget):
 
             r_idx = self.tablo.rowCount()
             self.tablo.insertRow(r_idx)
-            self.tablo.setItem(r_idx, 0, QTableWidgetItem(str(m.id)))
-            self.tablo.setItem(r_idx, 1, QTableWidgetItem(m.ad_soyad))
-            self.tablo.setItem(r_idx, 2, QTableWidgetItem(telefon_formatla(m.telefon)))
-            self.tablo.setItem(r_idx, 3, QTableWidgetItem(m.eposta))
+            item_id = QTableWidgetItem(str(m.id))
+            item_ad = QTableWidgetItem(m.ad_soyad)
+            item_tel = QTableWidgetItem(telefon_formatla(m.telefon))
+            item_eposta = QTableWidgetItem(m.eposta)
 
             # KVKK Maskeleme ve Geçersiz TC Rozeti
             tc_str = m.vergi_no_tc or ""
             if tc_str:
                 gecerli_tc, _ = vergi_veya_tc_dogrula(tc_str)
                 if not gecerli_tc:
-                    tc_item = QTableWidgetItem(f"{tc_maskele(tc_str)} ⚠️ Geçersiz TC")
-                    tc_item.setForeground(QtGui.QColor("#ff4757"))
-                    tc_item.setToolTip("TCKN veya Vergi No resmi kontrolden geçemedi!")
+                    item_tc = QTableWidgetItem(f"{tc_maskele(tc_str)} ⚠️ Geçersiz TC")
+                    item_tc.setForeground(QtGui.QColor("#ff4757"))
+                    item_tc.setToolTip("TCKN veya Vergi No resmi kontrolden geçemedi!")
                 else:
-                    tc_item = QTableWidgetItem(tc_maskele(tc_str))
+                    item_tc = QTableWidgetItem(tc_maskele(tc_str))
             else:
-                tc_item = QTableWidgetItem("-")
-            self.tablo.setItem(r_idx, 4, tc_item)
+                item_tc = QTableWidgetItem("-")
 
             # Bakiye
-            bakiye_item = QTableWidgetItem(kurus_to_tl_str(m.bakiye_kurus))
+            item_bakiye = QTableWidgetItem(kurus_to_tl_str(m.bakiye_kurus))
             if m.bakiye_kurus > 0:
-                bakiye_item.setForeground(QtGui.QColor("#ff4757"))
-                bakiye_item.setFont(QtGui.QFont("Segoe UI", 10, QtGui.QFont.Bold))
-            self.tablo.setItem(r_idx, 5, bakiye_item)
+                item_bakiye.setForeground(QtGui.QColor("#ff4757"))
+                item_bakiye.setFont(QtGui.QFont("Segoe UI", 10, QtGui.QFont.Bold))
 
-            self.tablo.setItem(r_idx, 6, QTableWidgetItem(m.adres))
+            item_adres = QTableWidgetItem(m.adres)
 
             # Durum / Hatalı Bilgi Rozeti
             if not gecerli:
@@ -613,7 +676,15 @@ class MusterilerPage(QWidget):
             else:
                 durum_item = QTableWidgetItem("✅ Aktif" if m.aktif == 1 else "⛔ Pasif")
                 durum_item.setForeground(QtGui.QColor("#2ecc71" if m.aktif == 1 else "#718093"))
-            self.tablo.setItem(r_idx, 7, durum_item)
+
+            row_items = [item_id, item_ad, item_tel, item_eposta, item_tc, item_bakiye, item_adres, durum_item]
+            if m.aktif == 0:
+                for it in row_items:
+                    if it != durum_item:
+                        it.setForeground(QtGui.QColor("#718093"))
+
+            for c_idx, it in enumerate(row_items):
+                self.tablo.setItem(r_idx, c_idx, it)
 
         if self.tablo.rowCount() == 0:
             self.lbl_sayi.setText("🔍 Aradığınız kriterlere uygun müşteri bulunamadı.")
@@ -621,6 +692,7 @@ class MusterilerPage(QWidget):
         else:
             self.lbl_sayi.setText(f"Toplam {self.tablo.rowCount()} müşteri listeleniyor.")
             self.lbl_sayi.setStyleSheet("color: #dcdde1;")
+        self.satir_secildi()
 
     def secili_musteri_id(self):
         secili = self.tablo.selectedItems()
@@ -631,7 +703,8 @@ class MusterilerPage(QWidget):
 
     def yeni_musteri_ac(self):
         diyalog = MusteriDiyalog(self, self.musteri_servisi, aktif_kullanici=self.aktif_kullanici)
-        if diyalog.exec_() == QDialog.Accepted:
+        apply_theme(diyalog)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def musteri_duzenle_ac(self):
@@ -645,7 +718,8 @@ class MusterilerPage(QWidget):
             return
 
         diyalog = MusteriDiyalog(self, self.musteri_servisi, musteri, aktif_kullanici=self.aktif_kullanici)
-        if diyalog.exec_() == QDialog.Accepted:
+        apply_theme(diyalog)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def tahsilat_ac(self):
@@ -659,7 +733,8 @@ class MusterilerPage(QWidget):
             return
 
         diyalog = TahsilatDiyalog(musteri, self.musteri_servisi, self.aktif_kullanici, self)
-        if diyalog.exec_() == QDialog.Accepted:
+        apply_theme(diyalog)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def ekstre_ac(self):
@@ -673,7 +748,8 @@ class MusterilerPage(QWidget):
             return
 
         diyalog = EkstreDiyalog(musteri, self.musteri_servisi, self)
-        diyalog.exec_()
+        apply_theme(diyalog)
+        diyalog.exec()
 
     def musteri_pasife_al(self):
         m_id = self.secili_musteri_id()
@@ -704,4 +780,26 @@ class MusterilerPage(QWidget):
         if onay == QMessageBox.Yes:
             self.musteri_servisi.musteri_pasife_al(m_id)
             QMessageBox.information(self, "Başarılı", "Müşteri cari hesabı pasife alındı.")
+            self.listeyi_guncelle()
+
+    def musteri_aktife_al(self):
+        m_id = self.secili_musteri_id()
+        if not m_id:
+            QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen aktife almak istediğiniz müşteriyi seçiniz.")
+            return
+
+        musteri = self.musteri_servisi.musteri_getir(m_id)
+        if not musteri:
+            return
+
+        onay = QMessageBox.question(
+            self,
+            "Aktife Alma Onayı",
+            f"'{musteri.ad_soyad}' cari hesabını tekrar aktif hale getirmek istediğinizden emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if onay == QMessageBox.Yes:
+            self.musteri_servisi.musteri_aktife_al(m_id)
+            QMessageBox.information(self, "Başarılı", "Müşteri cari hesabı tekrar aktife alındı.")
             self.listeyi_guncelle()

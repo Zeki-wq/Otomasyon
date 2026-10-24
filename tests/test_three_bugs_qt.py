@@ -8,8 +8,8 @@ HATA C: Hayalet boş satırların engellenmesi, filtrelerde tam satır sayısı 
 from pathlib import Path
 
 import pytest
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import QMessageBox
 
 from app.db.migrations.migrator import run_migrations
 from app.domain.models import Kullanici, Musteri, Urun
@@ -162,7 +162,7 @@ def test_hata_a_musteri_mevcut_hatali_kayitlar_ve_filtre(qtbot, test_db):
 def test_hata_a_urun_diyalog_dogrulama(qtbot, test_db, monkeypatch):
     """
     Ürün ekleme/düzenleme formunda negatif fiyat, harfli fiyat veya boş kod/ad
-    girildiğinde diyalogun açık kalması ve kırmızı alan vurgusu.
+    girildiğinde diyalogun açık kalması, hata etiketinin görünmesi ve kırmızı alan vurgusu.
     """
     monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: None)
     monkeypatch.setattr(QMessageBox, "critical", lambda *a, **k: None)
@@ -176,15 +176,92 @@ def test_hata_a_urun_diyalog_dogrulama(qtbot, test_db, monkeypatch):
     qtbot.addWidget(dlg)
     dlg.show()
 
-    # Hatalı veri
-    dlg.txt_kod.setText("A")  # < 2 karakter
-    dlg.txt_ad.setText("")    # Boş
+    # 1. Aşama: Hatalı veri ile kaydet butonuna basıldığında diyalog açık kalmalı ve hata etiketleri görünmeli
+    dlg.txt_kod.setText("")     # Boş kod
+    dlg.txt_ad.setText("a")     # Çok kısa ad (< 2 karakter)
     dlg.txt_alis.setText("abc") # Harf
-    dlg.txt_satis.setText("-50") # Negatif
+    dlg.txt_satis.setText("-50")# Negatif
 
     qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
     assert dlg.isVisible() is True, "Hatalı ürün girildiğinde diyalog açık kalmalıdır!"
-    assert len(us.urun_ara(sadece_aktif=False)) == 0
+    assert len(us.urun_ara(sadece_aktif=False)) == 0, "Hatalı ürün veritabanına eklenmemelidir!"
+
+    # Kırmızı hata etiketi ve kenarlık doğrulamaları
+    assert hasattr(dlg, "lbl_kod_hata"), "UrunDiyalog içinde lbl_kod_hata bulunmalı!"
+    assert dlg.lbl_kod_hata.isVisible() is True, "Kod hatası etiketi görünür olmalı!"
+    assert "parça kodu" in dlg.lbl_kod_hata.text().lower()
+
+    # Kodu düzelt, bu kez ad hatası vermeli
+    dlg.txt_kod.setText("PRC-TEST")
+    qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
+    assert dlg.isVisible() is True
+    assert hasattr(dlg, "lbl_ad_hata"), "UrunDiyalog içinde lbl_ad_hata bulunmalı!"
+    assert dlg.lbl_ad_hata.isVisible() is True
+
+    # Adı düzelt, bu kez fiyat hatası vermeli
+    dlg.txt_ad.setText("Test Parça")
+    qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
+    assert dlg.isVisible() is True
+    assert hasattr(dlg, "lbl_alis_hata") or hasattr(dlg, "lbl_satis_hata")
+
+    # Tüm alanları geçerli yapınca kaydedilmeli ve kapanmalı
+    dlg.txt_alis.setText("100")
+    dlg.txt_satis.setText("150")
+    qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
+    assert dlg.isVisible() is False
+    assert len(us.urun_ara(sadece_aktif=False)) == 1
+
+
+def test_hata_a_musteri_mevcut_kayit_duzeltmeye_zorlama(qtbot, test_db, monkeypatch):
+    """
+    Kullanıcının veritabanındaki gibi '515', 'asd', 'dfghjk' gibi bozuk müşteri kaydı
+    düzenleme penceresinde açıldığında:
+    1. Bozuk alanların (telefon, e-posta, tc) yanında hemen kırmızı Türkçe hata mesajı görünmeli.
+    2. Kutu kenarlıkları kırmızı olmalı.
+    3. Kullanıcı alanları geçerli hale getirmeden 'Kaydet' butonuna bastığında diyalog açık kalmalı ve veritabanı güncellenmemeli.
+    4. Geçerli veriler yazıldığında başarıyla güncellenmeli.
+    """
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: None)
+    monkeypatch.setattr(QMessageBox, "critical", lambda *a, **k: None)
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: None)
+
+    from app.db.connection import get_db_connection
+    conn = get_db_connection(test_db)
+    with conn:
+        conn.execute(
+            "INSERT INTO musteri (id, ad_soyad, telefon, eposta, vergi_no_tc, adres, aktif) VALUES (1, 'ali', '515', 'asd', '1782', 'test', 1)"
+        )
+
+    ms = MusteriServisi(test_db)
+    user = Kullanici(id=1, kullanici_adi="admin", parola_hash="", parola_salt="", ad_soyad="Admin", rol="yonetici")
+    m = ms.musteri_getir(1)
+
+    dlg = MusteriDiyalog(musteri_servisi=ms, musteri=m, aktif_kullanici=user)
+    apply_theme(dlg)
+    qtbot.addWidget(dlg)
+    dlg.show()
+
+    # Açılır açılmaz bozuk alanların hataları görünür olmalı
+    assert dlg.lbl_tel_hata.isVisible() is True, "Açılışta geçersiz telefon için hata etiketi görünmeli!"
+    assert dlg.lbl_eposta_hata.isVisible() is True, "Açılışta geçersiz e-posta için hata etiketi görünmeli!"
+    assert dlg.lbl_vergi_hata.isVisible() is True, "Açılışta geçersiz vergi/tc için hata etiketi görünmeli!"
+
+    # Doğrudan Kaydet'e basılırsa açık kalmalı
+    qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
+    assert dlg.isVisible() is True, "Bozuk alanlar düzeltilmeden kaydedilmemeli!"
+
+    # Düzelt
+    dlg.txt_tel.setText("05321112233")
+    dlg.txt_eposta.setText("ali@example.com")
+    dlg.txt_vergi.setText("10000000146")
+
+    qtbot.mouseClick(dlg.btn_kaydet, QtCore.Qt.LeftButton)
+    assert dlg.isVisible() is False, "Tüm alanlar geçerli olunca kapanmalı!"
+
+    guncel_m = ms.musteri_getir(1)
+    assert guncel_m.telefon == "05321112233"
+    assert guncel_m.eposta == "ali@example.com"
+    assert guncel_m.vergi_no_tc == "10000000146"
 
 
 # =========================================================================
@@ -319,15 +396,57 @@ def test_hata_c_urunler_filtre_ve_tam_satir_sayisi(qtbot, test_db):
     assert "bulunamadı" in page.lbl_ozet.text().lower()
 
 
+def test_hata_c_musteriler_filtre_ve_tam_satir_sayisi(qtbot, test_db):
+    """
+    HATA C Müşteriler Testi:
+    2 kayıt yükle -> rowCount=2
+    Filtreyle 1 kayda indir -> rowCount=1
+    Filtreyle 0 kayda indir -> rowCount=0 ve 'Sonuç bulunamadı' mesajı çıksın.
+    """
+    ms = MusteriServisi(test_db)
+    ms.musteri_ekle(Musteri(id=None, ad_soyad="Müşteri Aktif", telefon="05321112233", aktif=1))
+    m2_id = ms.musteri_ekle(Musteri(id=None, ad_soyad="Müşteri Pasif", telefon="05322223344", aktif=1))
+    ms.musteri_pasife_al(m2_id)
+
+    page = MusterilerPage(ms)
+    apply_theme(page)
+    qtbot.addWidget(page)
+    page.show()
+
+    # Varsayılan filtre: Tüm Müşteriler -> 2 kayıt
+    assert page.tablo.rowCount() == 2
+
+    # Yalnızca Aktifler -> 1 kayıt
+    idx_aktif = page.cmb_filtre_durum.findData("aktif")
+    page.cmb_filtre_durum.setCurrentIndex(idx_aktif)
+    assert page.tablo.rowCount() == 1
+    assert page.tablo.item(0, 1).text() == "Müşteri Aktif"
+
+    # Yalnızca Pasifler -> 1 kayıt
+    idx_pasif = page.cmb_filtre_durum.findData("pasif")
+    page.cmb_filtre_durum.setCurrentIndex(idx_pasif)
+    assert page.tablo.rowCount() == 1
+    assert page.tablo.item(0, 1).text() == "Müşteri Pasif"
+
+    # Olmayan arama -> 0 kayıt ve 'Sonuç bulunamadı' mesajı
+    page.txt_ara.setText("OLMAYAN_MUSTERI_XYZ")
+    assert page.tablo.rowCount() == 0
+    assert "bulunamadı" in page.lbl_sayi.text().lower()
+
+
 def test_hata_b_tum_sayfalardaki_tablolarda_wcag_kontrast(qtbot, test_db):
     """
-    Tüm sayfalardaki tabloların (ürünler, müşteriler, siparişler, stok hareketleri)
-    WCAG kontrast oranını (>= 4.5:1), koyu alternatif satırlarını ve köşe butonunun
-    koyu olduğunu doğrular. Başarısız olursa tablonun ve sayfanın adını yazar.
+    Tüm sayfalardaki tabloların (ürünler, müşteriler, siparişler, stok hareketleri,
+    sepet, raporlar, ayarlar ve diyaloglar) ekran görüntüsünü alır, 1., 2. ve 3.
+    satırların hücre arka planı ile metin rengi arasındaki WCAG kontrastını (>= 4.5:1),
+    koyu alternatif satırlarını ve köşe butonunun açık renk olmadığını doğrular.
+    Başarısız olursa tablonun ve sayfanın adını yazar.
     """
     from app.services.rapor_servisi import RaporServisi
     from app.services.yedek_servisi import YedekServisi
     from app.ui.main_window import MainWindow
+    from app.ui.pages.musteriler_page import EkstreDiyalog
+    from app.ui.pages.siparisler_page import SiparisDetayDiyalog
 
     us = UrunServisi(test_db)
     ss = StokServisi(test_db)
@@ -337,19 +456,47 @@ def test_hata_b_tum_sayfalardaki_tablolarda_wcag_kontrast(qtbot, test_db):
     ys = YedekServisi(test_db)
     rs = RaporServisi(test_db)
 
-    # Örnek veriler ekle
+    # 3'er kayıt ekle ki 1., 2. ve 3. satırlar test edilebilsin
     u1 = us.urun_ekle(Urun(id=None, parca_kodu="PRC-KTR1", ad="Buji Takımı", satis_fiyati_kurus=15000, stok=20))
     u2 = us.urun_ekle(Urun(id=None, parca_kodu="PRC-KTR2", ad="Fren Diski", satis_fiyati_kurus=45000, stok=10))
+    u3 = us.urun_ekle(Urun(id=None, parca_kodu="PRC-KTR3", ad="Hava Filtresi", satis_fiyati_kurus=12000, stok=30))
+
     m1 = ms.musteri_ekle(Musteri(id=None, ad_soyad="Ahmet Usta", telefon="05321112233"))
     m2 = ms.musteri_ekle(Musteri(id=None, ad_soyad="Mehmet Usta", telefon="05322223344"))
-    satis.siparis_olustur([{"urun_id": u1, "adet": 2, "birim_fiyat_kurus": 15000, "kdv_orani": 20}], musteri_id=m1)
+    m3 = ms.musteri_ekle(Musteri(id=None, ad_soyad="Can Usta", telefon="05323334455"))
+
+    s1_id = satis.siparis_olustur([
+        {"urun_id": u1, "adet": 2, "birim_fiyat_kurus": 15000, "kdv_orani": 20},
+        {"urun_id": u2, "adet": 1, "birim_fiyat_kurus": 45000, "kdv_orani": 20},
+        {"urun_id": u3, "adet": 3, "birim_fiyat_kurus": 12000, "kdv_orani": 20},
+    ], musteri_id=m1)
     satis.siparis_olustur([{"urun_id": u2, "adet": 1, "birim_fiyat_kurus": 45000, "kdv_orani": 20}], musteri_id=m2)
+    satis.siparis_olustur([{"urun_id": u3, "adet": 2, "birim_fiyat_kurus": 12000, "kdv_orani": 20}], musteri_id=m3)
 
     user = Kullanici(id=1, kullanici_adi="admin", parola_hash="", parola_salt="", ad_soyad="Admin", rol="yonetici")
 
     win = MainWindow(us, ss, satis, ms, ks, ys, rs, aktif_kullanici=user, db_path=test_db)
     qtbot.addWidget(win)
     win.show()
+
+    # Sepete de 3 kalem ürün ekle
+    win.sayfa_degistir("satis")
+    win.page_satis.txt_barkod_ara.setText("PRC-KTR1")
+    win.page_satis.urun_hizli_bul_ve_ekle()
+    win.page_satis.txt_barkod_ara.setText("PRC-KTR2")
+    win.page_satis.urun_hizli_bul_ve_ekle()
+    win.page_satis.txt_barkod_ara.setText("PRC-KTR3")
+    win.page_satis.urun_hizli_bul_ve_ekle()
+
+    # Raporlar sayfasına veri yükle
+    win.sayfa_degistir("raporlar")
+    win.page_raporlar.en_cok_satanlari_tazele()
+
+    # Ayarlar sayfasına 3 kullanıcı ekle
+    ks.kullanici_olustur("kullanici1", "123456", "Kullanıcı Bir", "personel")
+    ks.kullanici_olustur("kullanici2", "123456", "Kullanıcı İki", "personel")
+    win.sayfa_degistir("ayarlar")
+    win.page_ayarlar.kullanicilari_yukle()
 
     tablo_listesi = [
         ("UrunlerPage", "urunler", win.page_urunler.tablo),
@@ -358,17 +505,27 @@ def test_hata_b_tum_sayfalardaki_tablolarda_wcag_kontrast(qtbot, test_db):
         ("StokPage_Hareket", "stok", win.page_stok.tablo_hareket),
         ("StokPage_Kritik", "stok", win.page_stok.tablo_kritik),
         ("Dashboard_Siparis", "dashboard", win.page_dashboard.tablo_son_siparis),
+        ("SatisPage_Sepet", "satis", win.page_satis.tablo_sepet),
+        ("RaporlarPage_Top", "raporlar", win.page_raporlar.tablo_top),
+        ("AyarlarPage_Kullanici", "ayarlar", win.page_ayarlar.tablo_kullanici),
     ]
+
+    ekran_klasor = Path("docs/ekran/tablolar")
+    ekran_klasor.mkdir(parents=True, exist_ok=True)
 
     for sayfa_adi, sekme, tablo in tablo_listesi:
         win.sayfa_degistir(sekme)
         tablo.setAlternatingRowColors(True)
         tablo.clearSelection()
         tablo.setCurrentItem(None)
+
         pix = tablo.grab()
         img = pix.toImage()
 
-        # Köşe pikseli kontrolü: (0, 0) koordinatındaki köşe butonu beyaz OLMAMALI
+        # Ekran görüntüsünü kaydet
+        pix.save(str(ekran_klasor / f"{sayfa_adi}.png"))
+
+        # Köşe butonu açık renk OLMAMALI
         kose_color = QtGui.QColor(img.pixel(2, 2))
         kose_rgb = (kose_color.red(), kose_color.green(), kose_color.blue())
         kose_lum = _luminance(*kose_rgb)
@@ -376,25 +533,24 @@ def test_hata_b_tum_sayfalardaki_tablolarda_wcag_kontrast(qtbot, test_db):
             f"[{sayfa_adi}] Tablo sol üst köşe butonu açık renk ({kose_rgb}, lum={kose_lum:.2f})!"
         )
 
-        # Viewport görüntüsü üzerinden hücre arka plan pikselini kontrol et
+        # 1., 2. ve 3. satırların hücre arka planı ile metin rengi arasındaki kontrast
         vp_pix = tablo.viewport().grab()
         vp_img = vp_pix.toImage()
 
-        # Satır kontrastları kontrolü (en az 1 satır varsa)
-        if tablo.rowCount() > 0:
-            for r in range(min(2, tablo.rowCount())):
-                item = tablo.item(r, 1) or tablo.item(r, 0)
-                if item:
-                    rect = tablo.visualItemRect(item)
-                    px = rect.x() + rect.width() - 8
-                    py = rect.y() + (rect.height() // 2)
-                    c = QtGui.QColor(vp_img.pixel(px, py))
-                    bg_rgb = (c.red(), c.green(), c.blue())
-                    lum = _luminance(*bg_rgb)
-                    assert lum < 0.35, (
-                        f"[{sayfa_adi}] {r + 1}. satır arka planı çok açık ({bg_rgb}, lum={lum:.2f})!"
-                    )
-                    contrast = _contrast_ratio(bg_rgb, (245, 246, 250))
-                    assert contrast >= 4.5, (
-                        f"[{sayfa_adi}] {r + 1}. satır WCAG kontrastı yetersiz: {contrast:.2f} < 4.5"
-                    )
+        row_limit = min(3, tablo.rowCount())
+        for r in range(row_limit):
+            item = tablo.item(r, 1) or tablo.item(r, 0)
+            if item:
+                rect = tablo.visualItemRect(item)
+                px = rect.x() + rect.width() - 8
+                py = rect.y() + (rect.height() // 2)
+                c = QtGui.QColor(vp_img.pixel(px, py))
+                bg_rgb = (c.red(), c.green(), c.blue())
+                lum = _luminance(*bg_rgb)
+                assert lum < 0.35, (
+                    f"[{sayfa_adi}] {r + 1}. satır arka planı çok açık ({bg_rgb}, lum={lum:.2f})!"
+                )
+                contrast = _contrast_ratio(bg_rgb, (245, 246, 250))
+                assert contrast >= 4.5, (
+                    f"[{sayfa_adi}] {r + 1}. satır WCAG kontrastı yetersiz: {contrast:.2f} < 4.5"
+                )

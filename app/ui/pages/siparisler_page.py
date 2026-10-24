@@ -2,8 +2,8 @@
 Sipariş Geçmişi, Detay Görüntüleme ve İptal/İade Ekranı
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
     QDialog,
@@ -242,7 +242,7 @@ class SiparislerPage(QWidget):
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo.horizontalHeader().setMinimumSectionSize(65)
-        sip_widths = [45, 140, 125, 160, 65, 85, 95, 80, 105, 90, 80]
+        sip_widths = [45, 195, 125, 160, 65, 85, 95, 80, 105, 90, 80]
         for col, w in enumerate(sip_widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.detay_goster)
@@ -317,7 +317,12 @@ class SiparislerPage(QWidget):
                 durum_item.setForeground(QtGui.QColor("#2ed573"))
             self.tablo.setItem(satir_idx, 10, durum_item)
 
-        self.lbl_bilgi.setText(f"Toplam {len(siparisler)} sipariş listelendi.")
+        if len(siparisler) == 0:
+            self.lbl_bilgi.setText("🔍 Arama kriterlerine uygun sipariş bulunamadı.")
+            self.lbl_bilgi.setStyleSheet("color: #ff9f43; font-weight: bold;")
+        else:
+            self.lbl_bilgi.setText(f"Toplam {len(siparisler)} sipariş listelendi.")
+            self.lbl_bilgi.setStyleSheet("color: #dcdde1;")
 
     def secili_siparis_id(self):
         secili = self.tablo.selectedItems()
@@ -337,13 +342,15 @@ class SiparislerPage(QWidget):
             QMessageBox.critical(self, "Hata", "Sipariş bulunamadı.")
             return
 
+        from app.ui.theme import apply_theme
         diyalog = SiparisDetayDiyalog(
             siparis,
             satis_servisi=self.satis_servisi,
             aktif_kullanici=self.aktif_kullanici,
             parent=self
         )
-        if diyalog.exec_() == QDialog.Accepted:
+        apply_theme(diyalog)
+        if diyalog.exec() == QDialog.Accepted:
             self.listeyi_guncelle()
 
     def siparis_iptal_et(self):

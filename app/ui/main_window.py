@@ -3,7 +3,7 @@ Ana Uygulama Penceresi (Single MainWindow Architecture)
 Kenar çubuğu gezintisi, sayfa yığını (QStackedWidget) ve tek event loop.
 """
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,

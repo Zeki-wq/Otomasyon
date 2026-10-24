@@ -78,3 +78,27 @@ Bu belge, Oto Yedek Parça Otomasyonu projesinde alınan teknik, mimari ve iş a
   - `QHeaderView.ResizeToContents` yerine sütunlara orantılı sabit/etkileşimli genişlikler ve `min-height: 26px; padding: 6px;` verilerek başlık metinlerinin ("Ürün Adı", "Durum" vb.) kırpılması önlendi.
 - **Otomasyonlu Denetim:** `tests/test_ui_no_clipping.py` testi ile her sayfa ve diyalog açıldığında tüm giriş ve buton bileşenlerinin `height >= sizeHint().height() - 1` ve font advance genişlik kuralları denetlenir.
 
+### K9: Pasif Ürünler ve Durum Yönetimi
+- **Aktif/Pasif Filtreleme:** Ürünler sayfasında `Aktif / Pasif / Tümü` filtresi sunulur. Pasif ürünler soluk gri (`#718093`) ve `⛔ Pasif` rozetiyle gösterilir.
+- **Aktife Alma Yetkisi:** Yalnızca yönetici rolündeki kullanıcılar pasif ürünü seçtiğinde "♻️ Aktife Al" butonu görünür.
+- **Satış Ekranı İzolasyonu:** Satış ekranındaki ürün aramalarında `aktif = 1` filtresi zorunlu tutularak pasif ürünlerin yeni sepetlere eklenmesi engellenir.
+- **Denetim İzi:** Pasife ve aktife alma işlemleri `denetim_log` tablosuna (`urun_pasife_al` / `urun_aktife_al`) ve `stok_hareket` defterine (`hareket_tipi = 'sayim_duzeltme'`, `referans_tipi = 'urun_durum'`, kullanıcı id ve zaman damgasıyla) yazılır.
+
+### K10: Sepet Hesaplamaları ve Kuruş Hassasiyeti
+- **Merkezi Servis Fonksiyonu:** Sepet matrah, KDV ve genel toplam hesabı UI katmanına bırakılmamış, `satis_servisi.sepet_hesapla()` fonksiyonunda tamsayı kuruş hassasiyetinde toplanmıştır.
+- **Reaktif Arayüz ve Koruma:** Sepet tablosunda adet artırıldığında (`QSpinBox` veya tablo hücresi) satır tutarı ve alt toplam kartları anında güncellenir. Sinyal döngülerini engellemek için `_guncelleniyor` kalkanı (recursion guard) uygulanır.
+- **Stok Denetimi:** Sepetteki adet mevcut stoku aştığında işlem reddedilir, kullanıcıya mevcut stok uyarısı verilir ve adet mevcut stoka çekilir. Adet 0'a çekilirse satır sepetten otomatik silinir.
+
+### K11: Sipariş Geçmişi, Kalem Sayısı ve Detaydan İptal
+- **Sipariş Kalem & Adet Sayıları:** `siparis` tablosuna SQL alt sorgularıyla hesaplanan `kalem_sayisi` ve `toplam_adet` alanları eklenmiş, sipariş listesinde ve modelinde gösterilmiştir.
+- **Ürün Arama Filtresi:** Sipariş listesinde siparişin herhangi bir kaleminde geçen parça kodu veya ürün adına göre filtreleme (`EXISTS`) eklenmiştir.
+- **Detaydan İade/İptal:** Çift tıklanan siparişin detay penceresinde tüm kalemler (adet, birim fiyat, satır toplamı, KDV) listelenir ve yönetici yetkisiyle doğrudan pencereden sipariş iptal edilip stoklar geri iade edilebilir.
+
+### K12: Müşteri TC Kimlik No, Telefon Doğrulaması ve KVKK
+- **TCKN Algoritma Doğrulaması:** 11 haneli TCKN için resmi algoritma kuralları (`d10 = ((sum(tek)*7 - sum(cift)) % 10 + 10) % 10`, `d11 = sum(d1..d10) % 10`) uygulanır. İlk hane 0 olamaz. Boş bırakılmasına izin verilir (müşteri vermek istemeyebilir).
+- **Telefon Normalizasyonu:** Türkiye sabit ve mobil numaraları (+90, 90, 05XX, 02XX, vb.) standart 11 haneli `05XXXXXXXXX` biçimine normalize edilir.
+- **Katmanlı Doğrulama:** Doğrulama kuralları hem arayüzde dinamik hata etiketiyle anlık gösterilir hem de `musteri_servisi` ve `validators.py` içinde zorunlu kılınarak içe aktarma ve servis çağrılarında da veri bütünlüğü korunur.
+- **KVKK Maskeleme:** Müşteri listesinde ve personel ekranlarında TCKN maskeli (`100******46`) gösterilir; tam TCKN yalnızca yönetici rolüne düzenleme modunda sunulur.
+- **Mevcut Verinin Korunması:** Hatalı/eski kayıtlar silinmez, tabloda `(Geçersiz TC)` uyarı rozetiyle dükkan sahibine bildirilir.
+
+

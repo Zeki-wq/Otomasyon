@@ -90,6 +90,8 @@ class Siparis:
     kullanici_id: int | None = None
     musteri_adi: str = ""
     kullanici_adi: str = ""
+    kalem_sayisi: int = 0
+    toplam_adet: int = 0
     kalemler: list[SiparisKalem] = field(default_factory=list)
 
 

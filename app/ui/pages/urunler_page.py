@@ -5,7 +5,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDialog,
     QFrame,
@@ -25,7 +24,8 @@ from PyQt5.QtWidgets import (
 )
 
 from app.domain.models import Urun
-from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
+from app.domain.money import kurus_to_tl_str
+from app.domain.validators import sayisal_fiyat_dogrula
 from app.services.stok_servisi import StokServisi
 from app.services.urun_servisi import UrunServisi
 
@@ -245,8 +245,12 @@ class UrunDiyalog(QDialog):
             self.txt_ad.setFocus()
             return
 
-        alis_kurus = tl_str_to_kurus(self.txt_alis.text())
-        satis_kurus = tl_str_to_kurus(self.txt_satis.text())
+        try:
+            alis_kurus = sayisal_fiyat_dogrula(self.txt_alis.text(), "Alış Fiyatı")
+            satis_kurus = sayisal_fiyat_dogrula(self.txt_satis.text(), "Satış Fiyatı")
+        except ValueError as e:
+            QMessageBox.warning(self, "Geçersiz Fiyat", str(e))
+            return
 
         if satis_kurus <= 0:
             QMessageBox.warning(self, "Geçersiz Fiyat", "Satış fiyatı 0'dan büyük olmalıdır.")
@@ -367,10 +371,12 @@ class UrunlerPage(QWidget):
         self.cmb_filtre_marka.currentIndexChanged.connect(self.filtre_degisti)
         filtre_layout.addWidget(self.cmb_filtre_marka, stretch=2)
 
-        self.chk_aktif = QCheckBox("Sadece Aktifler")
-        self.chk_aktif.setChecked(True)
-        self.chk_aktif.stateChanged.connect(self.filtre_degisti)
-        filtre_layout.addWidget(self.chk_aktif)
+        self.cmb_aktiflik = QComboBox()
+        self.cmb_aktiflik.addItem("Yalnızca Aktifler", "aktif")
+        self.cmb_aktiflik.addItem("Yalnızca Pasifler", "pasif")
+        self.cmb_aktiflik.addItem("Tüm Ürünler (Aktif + Pasif)", "tumu")
+        self.cmb_aktiflik.currentIndexChanged.connect(self.filtre_degisti)
+        filtre_layout.addWidget(self.cmb_aktiflik, stretch=2)
 
         self.btn_temizle = QPushButton("Temizle")
         self.btn_temizle.setObjectName("btnSecondary")
@@ -396,6 +402,7 @@ class UrunlerPage(QWidget):
         for col, w in enumerate(widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.urun_duzenle_ac)
+        self.tablo.itemSelectionChanged.connect(self.satir_secildi)
         ana_layout.addWidget(self.tablo, stretch=1)
 
         # 4. Alt İşlem Çubuğu ve Sayfalama
@@ -414,6 +421,12 @@ class UrunlerPage(QWidget):
         self.btn_sil.setObjectName("btnDanger")
         self.btn_sil.clicked.connect(self.urun_pasife_al)
         alt_bar.addWidget(self.btn_sil)
+
+        self.btn_aktife_al = QPushButton("♻️ Aktife Al")
+        self.btn_aktife_al.setObjectName("btnSuccess")
+        self.btn_aktife_al.clicked.connect(self.urun_aktife_al)
+        self.btn_aktife_al.hide()
+        alt_bar.addWidget(self.btn_aktife_al)
 
         alt_bar.addStretch()
 
@@ -460,7 +473,7 @@ class UrunlerPage(QWidget):
         self.txt_ara.clear()
         self.cmb_filtre_kat.setCurrentIndex(0)
         self.cmb_filtre_marka.setCurrentIndex(0)
-        self.chk_aktif.setChecked(True)
+        self.cmb_aktiflik.setCurrentIndex(0)
         self.sayfa_no = 1
         self.listeyi_guncelle()
 
@@ -468,13 +481,13 @@ class UrunlerPage(QWidget):
         terim = self.txt_ara.text().strip()
         kat_id = self.cmb_filtre_kat.currentData()
         marka_id = self.cmb_filtre_marka.currentData()
-        sadece_aktif = self.chk_aktif.isChecked()
+        aktiflik = self.cmb_aktiflik.currentData()
 
         self.toplam_urun = self.urun_servisi.toplam_urun_sayisi(
             terim=terim,
             kategori_id=kat_id,
             marka_id=marka_id,
-            sadece_aktif=sadece_aktif
+            aktiflik_filtresi=aktiflik
         )
 
         toplam_sayfa = max(1, (self.toplam_urun + self.sayfa_boyutu - 1) // self.sayfa_boyutu)
@@ -486,7 +499,7 @@ class UrunlerPage(QWidget):
             terim=terim,
             kategori_id=kat_id,
             marka_id=marka_id,
-            sadece_aktif=sadece_aktif,
+            aktiflik_filtresi=aktiflik,
             limit=self.sayfa_boyutu,
             offset=offset
         )
@@ -496,29 +509,44 @@ class UrunlerPage(QWidget):
         for satir_idx, u in enumerate(urunler):
             self.tablo.insertRow(satir_idx)
 
-            self.tablo.setItem(satir_idx, 0, QTableWidgetItem(str(u.id)))
-            self.tablo.setItem(satir_idx, 1, QTableWidgetItem(u.parca_kodu))
-            self.tablo.setItem(satir_idx, 2, QTableWidgetItem(u.barkod))
-            self.tablo.setItem(satir_idx, 3, QTableWidgetItem(u.oem_no))
-            self.tablo.setItem(satir_idx, 4, QTableWidgetItem(u.ad))
-            self.tablo.setItem(satir_idx, 5, QTableWidgetItem(u.marka_adi))
-            self.tablo.setItem(satir_idx, 6, QTableWidgetItem(u.kategori_adi))
-            self.tablo.setItem(satir_idx, 7, QTableWidgetItem(u.raf_yeri))
-            self.tablo.setItem(satir_idx, 8, QTableWidgetItem(kurus_to_tl_str(u.alis_fiyati_kurus)))
-            self.tablo.setItem(satir_idx, 9, QTableWidgetItem(kurus_to_tl_str(u.satis_fiyati_kurus)))
-            self.tablo.setItem(satir_idx, 10, QTableWidgetItem(f"%{u.kdv_orani}"))
+            items = [
+                QTableWidgetItem(str(u.id)),
+                QTableWidgetItem(u.parca_kodu),
+                QTableWidgetItem(u.barkod),
+                QTableWidgetItem(u.oem_no),
+                QTableWidgetItem(u.ad),
+                QTableWidgetItem(u.marka_adi),
+                QTableWidgetItem(u.kategori_adi),
+                QTableWidgetItem(u.raf_yeri),
+                QTableWidgetItem(kurus_to_tl_str(u.alis_fiyati_kurus)),
+                QTableWidgetItem(kurus_to_tl_str(u.satis_fiyati_kurus)),
+                QTableWidgetItem(f"%{u.kdv_orani}"),
+            ]
+
+            # Pasif ürünlerde satırı soluklaştır
+            if u.aktif == 0:
+                for it in items:
+                    it.setForeground(QtGui.QColor("#718093"))
+
+            for col_idx, it in enumerate(items):
+                self.tablo.setItem(satir_idx, col_idx, it)
 
             # Stok hücresi (Kritikse uyar)
             stok_item = QTableWidgetItem(str(u.stok))
-            if u.stok <= u.kritik_stok:
+            if u.aktif == 0:
+                stok_item.setForeground(QtGui.QColor("#718093"))
+            elif u.stok <= u.kritik_stok:
                 stok_item.setForeground(QtGui.QColor("#ff4757"))
                 stok_item.setToolTip(f"Kritik stok seviyesinde! (Kritik: {u.kritik_stok})")
             self.tablo.setItem(satir_idx, 11, stok_item)
 
-            durum_str = "Aktif" if u.aktif == 1 else "Pasif"
-            durum_item = QTableWidgetItem(durum_str)
-            if u.aktif == 0:
-                durum_item.setForeground(QtGui.QColor("#718093"))
+            if u.aktif == 1:
+                durum_item = QTableWidgetItem("✅ Aktif")
+                durum_item.setForeground(QtGui.QColor("#2ecc71"))
+            else:
+                durum_item = QTableWidgetItem("⛔ Pasif")
+                durum_item.setForeground(QtGui.QColor("#e74c3c"))
+                durum_item.setToolTip("Bu ürün pasif durumdadır. Satış ekranında çıkmaz.")
             self.tablo.setItem(satir_idx, 12, durum_item)
 
         # Sayfalama butonları
@@ -529,6 +557,26 @@ class UrunlerPage(QWidget):
         # Özet bilgi
         kritik_sayisi = self.stok_servisi.kritik_stok_sayisi()
         self.lbl_ozet.setText(f"Toplam: {self.toplam_urun} Ürün  |  ⚠️ Kritik Stok: {kritik_sayisi}")
+        self.satir_secildi()
+
+    def satir_secildi(self):
+        u_id = self.secili_urun_id()
+        if not u_id:
+            self.btn_aktife_al.hide()
+            self.btn_sil.show()
+            return
+
+        urun = self.urun_servisi.urun_getir(u_id)
+        if not urun:
+            return
+
+        if urun.aktif == 0:
+            self.btn_sil.hide()
+            is_admin = bool(self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici")
+            self.btn_aktife_al.setVisible(is_admin)
+        else:
+            self.btn_aktife_al.hide()
+            self.btn_sil.show()
 
     def onceki_sayfa(self):
         if self.sayfa_no > 1:
@@ -586,8 +634,33 @@ class UrunlerPage(QWidget):
         )
 
         if onay == QMessageBox.Yes:
-            self.urun_servisi.urun_pasife_al(u_id)
+            k_id = getattr(self.aktif_kullanici, "id", None)
+            self.urun_servisi.urun_pasife_al(u_id, kullanici_id=k_id)
             QMessageBox.information(self, "Başarılı", "Ürün pasife alındı.")
+            self.listeyi_guncelle()
+
+    def urun_aktife_al(self):
+        u_id = self.secili_urun_id()
+        if not u_id:
+            QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen aktife almak istediğiniz ürünü seçiniz.")
+            return
+
+        urun = self.urun_servisi.urun_getir(u_id)
+        if not urun:
+            return
+
+        onay = QMessageBox.question(
+            self,
+            "Aktife Alma Onayı",
+            f"'{urun.ad}' ({urun.parca_kodu}) ürününü tekrar aktif hale getirmek istediğinizden emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+
+        if onay == QMessageBox.Yes:
+            k_id = getattr(self.aktif_kullanici, "id", None)
+            self.urun_servisi.urun_aktife_al(u_id, kullanici_id=k_id)
+            QMessageBox.information(self, "Başarılı", "Ürün başarıyla aktife alındı.")
             self.listeyi_guncelle()
 
     def stok_duzelt_ac(self):

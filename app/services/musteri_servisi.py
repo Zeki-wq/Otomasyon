@@ -8,17 +8,47 @@ from typing import Any
 
 from app.db.connection import get_db_connection
 from app.domain.models import Musteri
+from app.domain.validators import (
+    eposta_dogrula,
+    tc_kimlik_dogrula,
+    telefon_dogrula_ve_normalize,
+    vergi_no_dogrula,
+)
 
 
 class MusteriServisi:
     def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
-    def musteri_ekle(self, musteri: Musteri) -> int:
-        """Yeni cari müşteri ekler."""
+    def _bilgileri_dogrula_ve_normalize_et(self, musteri: Musteri) -> tuple[str, str, str, str]:
+        """İletişim ve kimlik bilgilerini kurallara göre doğrular."""
         ad_soyad = str(musteri.ad_soyad or "").strip()
         if not ad_soyad:
             raise ValueError("Müşteri adı soyadı boş bırakılamaz.")
+
+        tel_norm = telefon_dogrula_ve_normalize(musteri.telefon)
+
+        v_tc = str(musteri.vergi_no_tc or "").strip()
+        if v_tc:
+            if len(v_tc) == 11:
+                if not tc_kimlik_dogrula(v_tc):
+                    raise ValueError("TC Kimlik Numarası 11 haneli ve resmi algoritmaya uygun olmalıdır!")
+            elif len(v_tc) == 10:
+                if not vergi_no_dogrula(v_tc):
+                    raise ValueError("Vergi Numarası 10 haneli rakam olmalıdır!")
+            else:
+                raise ValueError("TC Kimlik No (11 hane) veya Vergi Numarası (10 hane) geçerli olmalıdır!")
+
+        eposta = str(musteri.eposta or "").strip()
+        if eposta and not eposta_dogrula(eposta):
+            raise ValueError("Geçersiz e-posta adresi biçimi!")
+
+        adres = str(musteri.adres or "").strip()
+        return ad_soyad, tel_norm, eposta, v_tc, adres
+
+    def musteri_ekle(self, musteri: Musteri) -> int:
+        """Yeni cari müşteri ekler."""
+        ad_soyad, tel_norm, eposta, v_tc, adres = self._bilgileri_dogrula_ve_normalize_et(musteri)
 
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -29,10 +59,10 @@ class MusteriServisi:
                 ) VALUES (?, ?, ?, ?, ?, ?, 1)
             """, (
                 ad_soyad,
-                str(musteri.telefon or "").strip(),
-                str(musteri.eposta or "").strip(),
-                str(musteri.adres or "").strip(),
-                str(musteri.vergi_no_tc or "").strip(),
+                tel_norm,
+                eposta,
+                adres,
+                v_tc,
                 musteri.bakiye_kurus
             ))
             yeni_id = cur.lastrowid
@@ -44,9 +74,7 @@ class MusteriServisi:
         if not musteri.id:
             raise ValueError("Müşteri ID'si gereklidir.")
 
-        ad_soyad = str(musteri.ad_soyad or "").strip()
-        if not ad_soyad:
-            raise ValueError("Müşteri adı soyadı boş bırakılamaz.")
+        ad_soyad, tel_norm, eposta, v_tc, adres = self._bilgileri_dogrula_ve_normalize_et(musteri)
 
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -61,10 +89,10 @@ class MusteriServisi:
                 WHERE id = ?
             """, (
                 ad_soyad,
-                str(musteri.telefon or "").strip(),
-                str(musteri.eposta or "").strip(),
-                str(musteri.adres or "").strip(),
-                str(musteri.vergi_no_tc or "").strip(),
+                tel_norm,
+                eposta,
+                adres,
+                v_tc,
                 musteri.id
             ))
         conn.close()

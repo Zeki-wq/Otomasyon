@@ -16,6 +16,45 @@ class SatisServisi:
     def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
+    def sepet_hesapla(self, kalemler: list[dict[str, Any]]) -> dict[str, Any]:
+        """
+        Sepetteki kalemlerin satır ve genel toplamlarını kuruş (int) olarak hesaplar.
+        UI bu fonksiyonun sonucunu formatlayıp görüntüler.
+        """
+        toplam_matrah = 0
+        toplam_kdv = 0
+        hesapli_kalemler = []
+
+        for item in kalemler:
+            adet = int(item.get("adet", 1))
+            birim_fiyat = int(item.get("birim_fiyat_kurus", 0))
+            kdv_orani = int(item.get("kdv_orani", 20))
+
+            kalem_matrah = adet * birim_fiyat
+            kalem_kdv, _ = kdv_hesapla(kalem_matrah, kdv_orani)
+            satir_toplam = kalem_matrah + kalem_kdv
+
+            toplam_matrah += kalem_matrah
+            toplam_kdv += kalem_kdv
+
+            hesapli_kalemler.append({
+                **item,
+                "adet": adet,
+                "birim_fiyat_kurus": birim_fiyat,
+                "kdv_orani": kdv_orani,
+                "matrah_kurus": kalem_matrah,
+                "kdv_kurus": kalem_kdv,
+                "satir_toplam_kurus": satir_toplam
+            })
+
+        genel_toplam = toplam_matrah + toplam_kdv
+        return {
+            "kalemler": hesapli_kalemler,
+            "toplam_matrah": toplam_matrah,
+            "toplam_kdv": toplam_kdv,
+            "genel_toplam_kurus": genel_toplam
+        }
+
     def siparis_olustur(
         self,
         kalemler: list[dict[str, Any]],
@@ -210,6 +249,8 @@ class SatisServisi:
                 aciklama=aciklama,
                 kullanici_id=kullanici_id,
                 musteri_adi=musteri_adi,
+                kalem_sayisi=len(olusturulan_kalemler),
+                toplam_adet=sum(k.adet for k in olusturulan_kalemler),
                 kalemler=olusturulan_kalemler
             )
 
@@ -301,6 +342,7 @@ class SatisServisi:
         durum: str | None = None,
         baslangic_tarih: str | None = None,
         bitis_tarih: str | None = None,
+        urun_ara: str | None = None,
         limit: int = 100,
         offset: int = 0
     ) -> list[Siparis]:
@@ -327,12 +369,27 @@ class SatisServisi:
             kosullar.append("s.tarih <= ?")
             parametreler.append(f"{bitis_tarih} 23:59:59")
 
+        if urun_ara and urun_ara.strip():
+            u_term = f"%{urun_ara.strip()}%"
+            kosullar.append(
+                "EXISTS (SELECT 1 FROM siparis_kalem sk_ara WHERE sk_ara.siparis_id = s.id "
+                "AND (sk_ara.urun_adi_anlik LIKE ? OR sk_ara.parca_kodu_anlik LIKE ?))"
+            )
+            parametreler.extend([u_term, u_term])
+
         where_clause = " WHERE " + " AND ".join(kosullar) if kosullar else ""
         sql = f"""
-            SELECT s.*, m.ad_soyad as musteri_adi, k.ad_soyad as kullanici_adi
+            SELECT s.*, m.ad_soyad as musteri_adi, k.ad_soyad as kullanici_adi,
+                   COALESCE(sub.kalem_sayisi, 0) as kalem_sayisi,
+                   COALESCE(sub.toplam_adet, 0) as toplam_adet
             FROM siparis s
             LEFT JOIN musteri m ON s.musteri_id = m.id
             LEFT JOIN kullanici k ON s.kullanici_id = k.id
+            LEFT JOIN (
+                SELECT siparis_id, COUNT(*) as kalem_sayisi, SUM(adet) as toplam_adet
+                FROM siparis_kalem
+                GROUP BY siparis_id
+            ) sub ON sub.siparis_id = s.id
             {where_clause}
             ORDER BY s.id DESC
             LIMIT ? OFFSET ?
@@ -357,7 +414,9 @@ class SatisServisi:
                 aciklama=r["aciklama"] or "",
                 kullanici_id=r["kullanici_id"],
                 musteri_adi=r["musteri_adi"] or "Perakende Müşteri",
-                kullanici_adi=r["kullanici_adi"] or ""
+                kullanici_adi=r["kullanici_adi"] or "",
+                kalem_sayisi=r["kalem_sayisi"],
+                toplam_adet=r["toplam_adet"]
             )
             for r in rows
         ]
@@ -401,6 +460,8 @@ class SatisServisi:
             for k in k_rows
         ]
 
+        toplam_adet = sum(k.adet for k in kalemler)
+
         return Siparis(
             id=s_row["id"],
             siparis_no=s_row["siparis_no"],
@@ -415,5 +476,7 @@ class SatisServisi:
             kullanici_id=s_row["kullanici_id"],
             musteri_adi=s_row["musteri_adi"] or "Perakende Müşteri",
             kullanici_adi=s_row["kullanici_adi"] or "",
+            kalem_sayisi=len(kalemler),
+            toplam_adet=toplam_adet,
             kalemler=kalemler
         )

@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (
 )
 
 from app.domain.models import Urun
-from app.domain.money import kdv_hesapla, kurus_to_tl_str
+from app.domain.money import kurus_to_tl_str
 from app.services.musteri_servisi import MusteriServisi
 from app.services.satis_servisi import SatisServisi
 from app.services.urun_servisi import UrunServisi
@@ -49,6 +49,7 @@ class SatisPage(QWidget):
 
         self.sepet = []  # List[dict]: {"urun": Urun, "adet": int, "birim_fiyat_kurus": int, "kdv_orani": int}
         self.secili_hizli_urun: Urun | None = None
+        self._guncelleniyor = False
 
         self.init_ui()
         self.musterileri_doldur()
@@ -99,17 +100,18 @@ class SatisPage(QWidget):
         self.tablo_sepet = QTableWidget()
         self.tablo_sepet.setColumnCount(8)
         self.tablo_sepet.setHorizontalHeaderLabels([
-            "Ürün ID", "Parça Kodu", "Ürün Adı", "Stok",
-            "Adet", "Birim Fiyat", "KDV", "Toplam Tutar"
+            "Ürün ID", "Parça Kodu", "Ürün", "Mevcut Stok",
+            "Adet", "Birim Fiyat", "KDV", "Satır Toplamı"
         ])
         self.tablo_sepet.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo_sepet.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo_sepet.setAlternatingRowColors(True)
         self.tablo_sepet.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo_sepet.horizontalHeader().setMinimumSectionSize(65)
-        sepet_widths = [85, 115, 180, 70, 70, 115, 65, 125]
+        sepet_widths = [75, 115, 190, 75, 80, 115, 65, 125]
         for col, w in enumerate(sepet_widths):
             self.tablo_sepet.setColumnWidth(col, w)
+        self.tablo_sepet.itemChanged.connect(self._on_sepet_item_changed)
         sol_layout.addWidget(self.tablo_sepet, stretch=1)
 
         # Sepet İşlem Butonları
@@ -334,36 +336,121 @@ class SatisPage(QWidget):
         return None
 
     def sepet_tablosunu_guncelle(self):
-        self.tablo_sepet.setRowCount(0)
-        toplam_matrah = 0
-        toplam_kdv = 0
+        self._guncelleniyor = True
+        try:
+            self.tablo_sepet.setRowCount(0)
+            kalem_verileri = [
+                {
+                    "adet": item["adet"],
+                    "birim_fiyat_kurus": item["birim_fiyat_kurus"],
+                    "kdv_orani": item["kdv_orani"]
+                }
+                for item in self.sepet
+            ]
+            hesap = self.satis_servisi.sepet_hesapla(kalem_verileri)
 
-        for idx, item in enumerate(self.sepet):
-            u = item["urun"]
-            adet = item["adet"]
-            birim_fiyat = item["birim_fiyat_kurus"]
-            kdv_orani = item["kdv_orani"]
+            for idx, item in enumerate(self.sepet):
+                u = item["urun"]
+                adet = item["adet"]
+                birim_fiyat = item["birim_fiyat_kurus"]
+                kdv_orani = item["kdv_orani"]
+                satir_toplam = hesap["kalemler"][idx]["satir_toplam_kurus"]
 
-            matrah = adet * birim_fiyat
-            kdv_tutar, _ = kdv_hesapla(matrah, kdv_orani)
+                self.tablo_sepet.insertRow(idx)
+                self.tablo_sepet.setItem(idx, 0, QTableWidgetItem(str(u.id)))
+                self.tablo_sepet.setItem(idx, 1, QTableWidgetItem(u.parca_kodu))
+                self.tablo_sepet.setItem(idx, 2, QTableWidgetItem(u.ad))
+                self.tablo_sepet.setItem(idx, 3, QTableWidgetItem(str(u.stok)))
 
-            toplam_matrah += matrah
-            toplam_kdv += kdv_tutar
+                # 4. Adet hücresi (QSpinBox ile anlık düzenleme)
+                spn = QSpinBox()
+                spn.setRange(0, 100000)
+                spn.setValue(adet)
+                spn.setMinimumWidth(70)
+                spn.valueChanged.connect(lambda val, r=idx: self.sepet_adet_degisti(r, val))
+                self.tablo_sepet.setCellWidget(idx, 4, spn)
+                self.tablo_sepet.setItem(idx, 4, QTableWidgetItem(str(adet)))
 
-            self.tablo_sepet.insertRow(idx)
-            self.tablo_sepet.setItem(idx, 0, QTableWidgetItem(str(u.id)))
-            self.tablo_sepet.setItem(idx, 1, QTableWidgetItem(u.parca_kodu))
-            self.tablo_sepet.setItem(idx, 2, QTableWidgetItem(u.ad))
-            self.tablo_sepet.setItem(idx, 3, QTableWidgetItem(str(u.stok)))
-            self.tablo_sepet.setItem(idx, 4, QTableWidgetItem(str(adet)))
-            self.tablo_sepet.setItem(idx, 5, QTableWidgetItem(kurus_to_tl_str(birim_fiyat)))
-            self.tablo_sepet.setItem(idx, 6, QTableWidgetItem(f"%{kdv_orani}"))
-            self.tablo_sepet.setItem(idx, 7, QTableWidgetItem(kurus_to_tl_str(matrah + kdv_tutar)))
+                self.tablo_sepet.setItem(idx, 5, QTableWidgetItem(kurus_to_tl_str(birim_fiyat)))
+                self.tablo_sepet.setItem(idx, 6, QTableWidgetItem(f"%{kdv_orani}"))
+                self.tablo_sepet.setItem(idx, 7, QTableWidgetItem(kurus_to_tl_str(satir_toplam)))
 
-        genel_toplam = toplam_matrah + toplam_kdv
-        self.lbl_ara_toplam.setText(kurus_to_tl_str(toplam_matrah))
-        self.lbl_kdv_toplam.setText(kurus_to_tl_str(toplam_kdv))
-        self.lbl_genel_toplam.setText(kurus_to_tl_str(genel_toplam))
+            self.lbl_ara_toplam.setText(kurus_to_tl_str(hesap["toplam_matrah"]))
+            self.lbl_kdv_toplam.setText(kurus_to_tl_str(hesap["toplam_kdv"]))
+            self.lbl_genel_toplam.setText(kurus_to_tl_str(hesap["genel_toplam_kurus"]))
+        finally:
+            self._guncelleniyor = False
+
+    def _on_sepet_item_changed(self, item):
+        if not self._guncelleniyor and item.column() == 4:
+            row = item.row()
+            if 0 <= row < len(self.sepet):
+                try:
+                    val = int(item.text().strip())
+                    self.sepet_adet_degisti(row, val)
+                except ValueError:
+                    pass
+
+    def sepet_adet_degisti(self, row: int, val: int):
+        if self._guncelleniyor:
+            return
+        if row < 0 or row >= len(self.sepet):
+            return
+
+        item = self.sepet[row]
+        u = item["urun"]
+
+        if val <= 0:
+            del self.sepet[row]
+            self.sepet_tablosunu_guncelle()
+            return
+
+        if val > u.stok:
+            QMessageBox.warning(
+                self,
+                "Yetersiz Stok",
+                f"'{u.ad}' için depoda {u.stok} adet var, {val} adet eklenemez!\nMevcut stok: {u.stok}"
+            )
+            val = u.stok
+            w = self.tablo_sepet.cellWidget(row, 4)
+            if isinstance(w, QSpinBox):
+                w.blockSignals(True)
+                w.setValue(val)
+                w.blockSignals(False)
+
+        item["adet"] = val
+        self.sepet_toplamlarini_guncelle()
+
+    def sepet_toplamlarini_guncelle(self):
+        self._guncelleniyor = True
+        try:
+            kalem_verileri = [
+                {
+                    "adet": item["adet"],
+                    "birim_fiyat_kurus": item["birim_fiyat_kurus"],
+                    "kdv_orani": item["kdv_orani"]
+                }
+                for item in self.sepet
+            ]
+            hesap = self.satis_servisi.sepet_hesapla(kalem_verileri)
+
+            for idx, k in enumerate(hesap["kalemler"]):
+                if idx < self.tablo_sepet.rowCount():
+                    self.tablo_sepet.setItem(idx, 7, QTableWidgetItem(kurus_to_tl_str(k["satir_toplam_kurus"])))
+                    item_adet = self.tablo_sepet.item(idx, 4)
+                    if item_adet and item_adet.text() != str(k["adet"]):
+                        item_adet.setText(str(k["adet"]))
+                    w = self.tablo_sepet.cellWidget(idx, 4)
+                    if isinstance(w, QSpinBox) and w.value() != k["adet"]:
+                        w.blockSignals(True)
+                        w.setValue(k["adet"])
+                        w.blockSignals(False)
+
+            self.lbl_ara_toplam.setText(kurus_to_tl_str(hesap["toplam_matrah"]))
+            self.lbl_kdv_toplam.setText(kurus_to_tl_str(hesap["toplam_kdv"]))
+            self.lbl_genel_toplam.setText(kurus_to_tl_str(hesap["genel_toplam_kurus"]))
+        finally:
+            self._guncelleniyor = False
 
     def secili_satiri_sil(self):
         secili = self.tablo_sepet.selectedItems()

@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -27,13 +28,15 @@ from app.services.satis_servisi import SatisServisi
 class SiparisDetayDiyalog(QDialog):
     """Siparişin kalemlerini ve detaylarını gösteren pencere."""
 
-    def __init__(self, siparis, parent=None):
+    def __init__(self, siparis, satis_servisi: SatisServisi = None, aktif_kullanici=None, parent=None):
         super().__init__(parent)
         self.siparis = siparis
+        self.satis_servisi = satis_servisi
+        self.aktif_kullanici = aktif_kullanici
         self.setWindowTitle(f"Sipariş Detayı - {siparis.siparis_no}")
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumSize(750, 480)
-        self.resize(780, 500)
+        self.setMinimumSize(780, 500)
+        self.resize(800, 520)
         self.init_ui()
 
     def init_ui(self):
@@ -55,6 +58,7 @@ class SiparisDetayDiyalog(QDialog):
         alt.addWidget(QLabel(f"<b>Ödeme:</b> {self.siparis.odeme_tipi.upper()}"))
         durum_renk = "#2ecc71" if self.siparis.durum == "tamamlandi" else "#e74c3c"
         alt.addWidget(QLabel(f"<b>Durum:</b> <span style='color:{durum_renk}; font-weight:bold;'>{self.siparis.durum.upper()}</span>"))
+        alt.addWidget(QLabel(f"<b>Kalem / Adet:</b> {self.siparis.kalem_sayisi} Kalem ({self.siparis.toplam_adet} Adet)"))
         if self.siparis.aciklama:
             alt.addWidget(QLabel(f"<b>Not:</b> {self.siparis.aciklama}"))
         k_layout.addLayout(alt)
@@ -68,8 +72,11 @@ class SiparisDetayDiyalog(QDialog):
             "Parça Kodu", "Ürün Adı", "Adet", "Birim Fiyat", "KDV", "Toplam Tutar"
         ])
         tablo.setAlternatingRowColors(True)
-        tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         tablo.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        k_widths = [110, 220, 70, 110, 65, 120]
+        for col, w in enumerate(k_widths):
+            tablo.setColumnWidth(col, w)
 
         for idx, k in enumerate(self.siparis.kalemler):
             tablo.insertRow(idx)
@@ -90,10 +97,49 @@ class SiparisDetayDiyalog(QDialog):
         toplam_kutu.addWidget(QLabel(f"GENEL TOPLAM: <b style='color:#2ecc71; font-size:12pt;'>{kurus_to_tl_str(self.siparis.genel_toplam_kurus)}</b>"))
         layout.addLayout(toplam_kutu)
 
+        alt_butonlar = QHBoxLayout()
+        self.btn_iptal = QPushButton("❌ Bu Siparişi İptal Et (Stoğu İade Al)")
+        self.btn_iptal.setObjectName("btnDanger")
+        if self.siparis.durum == "iptal":
+            self.btn_iptal.setEnabled(False)
+            self.btn_iptal.setText("❌ Sipariş Zaten İptal Edilmiş")
+        else:
+            self.btn_iptal.clicked.connect(self.siparis_iptal_et)
+        alt_butonlar.addWidget(self.btn_iptal)
+
+        alt_butonlar.addStretch()
+
         btn_kapat = QPushButton("Kapat")
         btn_kapat.setObjectName("btnSecondary")
         btn_kapat.clicked.connect(self.accept)
-        layout.addWidget(btn_kapat, alignment=QtCore.Qt.AlignRight)
+        alt_butonlar.addWidget(btn_kapat)
+
+        layout.addLayout(alt_butonlar)
+
+    def siparis_iptal_et(self):
+        if not self.satis_servisi:
+            return
+        onay = QMessageBox.question(
+            self,
+            "Sipariş İptal Onayı",
+            f"'{self.siparis.siparis_no}' numaralı siparişi iptal etmek istediğinizden emin misiniz?\n\n"
+            "• Siparişteki tüm ürünlerin stoğu depoya geri iade edilecektir.\n"
+            "• Veresiye satış ise müşterinin borcundan düşülecektir.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if onay == QMessageBox.Yes:
+            try:
+                k_id = getattr(self.aktif_kullanici, "id", None)
+                self.satis_servisi.siparis_iptal_et(
+                    siparis_id=self.siparis.id,
+                    aciklama="Detay ekranından iptal edildi",
+                    kullanici_id=k_id
+                )
+                QMessageBox.information(self, "Başarılı", "Sipariş başarıyla iptal edildi ve stoklar iade alındı.")
+                self.accept()
+            except Exception as e:
+                QMessageBox.critical(self, "Hata", str(e))
 
 
 class SiparislerPage(QWidget):
@@ -141,8 +187,14 @@ class SiparislerPage(QWidget):
         filtre_layout.setContentsMargins(10, 8, 10, 8)
         filtre_layout.setSpacing(10)
 
+        # Ürün Arama
+        self.txt_urun_ara = QLineEdit()
+        self.txt_urun_ara.setPlaceholderText("🔍 Siparişteki ürün adı veya kodu...")
+        self.txt_urun_ara.textChanged.connect(self.listeyi_guncelle)
+        filtre_layout.addWidget(self.txt_urun_ara, stretch=2)
+
         # Tarih filtreleri
-        filtre_layout.addWidget(QLabel("Tarih Aralığı:"))
+        filtre_layout.addWidget(QLabel("Tarih:"))
         self.dt_baslangic = QDateEdit()
         self.dt_baslangic.setCalendarPopup(True)
         self.dt_baslangic.setDate(QtCore.QDate.currentDate().addDays(-30))
@@ -178,19 +230,19 @@ class SiparislerPage(QWidget):
 
         ana_layout.addWidget(filtre_kart)
 
-        # Siparişler Tablosu
+        # Siparişler Tablosu (11 Sütun: Kalem Sayısı ve Toplam Adet eklendi)
         self.tablo = QTableWidget()
-        self.tablo.setColumnCount(9)
+        self.tablo.setColumnCount(11)
         self.tablo.setHorizontalHeaderLabels([
-            "ID", "Sipariş No", "Tarih", "Müşteri", "Ara Toplam",
-            "KDV", "Genel Toplam", "Ödeme Tipi", "Durum"
+            "ID", "Sipariş No", "Tarih", "Müşteri", "Kalem",
+            "Toplam Adet", "Ara Toplam", "KDV", "Genel Toplam", "Ödeme Tipi", "Durum"
         ])
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo.horizontalHeader().setMinimumSectionSize(65)
-        sip_widths = [50, 140, 130, 200, 95, 80, 105, 95, 85]
+        sip_widths = [45, 140, 125, 160, 65, 85, 95, 80, 105, 90, 80]
         for col, w in enumerate(sip_widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.detay_goster)
@@ -233,12 +285,14 @@ class SiparislerPage(QWidget):
         bitis = self.dt_bitis.date().toString("yyyy-MM-dd")
         musteri_id = self.cmb_musteri.currentData()
         durum = self.cmb_durum.currentData()
+        urun_ara = self.txt_urun_ara.text().strip()
 
         siparisler = self.satis_servisi.siparisleri_getir(
             musteri_id=musteri_id,
             durum=durum,
             baslangic_tarih=baslangic,
             bitis_tarih=bitis,
+            urun_ara=urun_ara,
             limit=200
         )
 
@@ -249,17 +303,19 @@ class SiparislerPage(QWidget):
             self.tablo.setItem(satir_idx, 1, QTableWidgetItem(s.siparis_no))
             self.tablo.setItem(satir_idx, 2, QTableWidgetItem(str(s.tarih)))
             self.tablo.setItem(satir_idx, 3, QTableWidgetItem(s.musteri_adi))
-            self.tablo.setItem(satir_idx, 4, QTableWidgetItem(kurus_to_tl_str(s.ara_toplam_kurus)))
-            self.tablo.setItem(satir_idx, 5, QTableWidgetItem(kurus_to_tl_str(s.kdv_toplam_kurus)))
-            self.tablo.setItem(satir_idx, 6, QTableWidgetItem(kurus_to_tl_str(s.genel_toplam_kurus)))
-            self.tablo.setItem(satir_idx, 7, QTableWidgetItem(s.odeme_tipi.upper()))
+            self.tablo.setItem(satir_idx, 4, QTableWidgetItem(f"{s.kalem_sayisi}"))
+            self.tablo.setItem(satir_idx, 5, QTableWidgetItem(f"{s.toplam_adet}"))
+            self.tablo.setItem(satir_idx, 6, QTableWidgetItem(kurus_to_tl_str(s.ara_toplam_kurus)))
+            self.tablo.setItem(satir_idx, 7, QTableWidgetItem(kurus_to_tl_str(s.kdv_toplam_kurus)))
+            self.tablo.setItem(satir_idx, 8, QTableWidgetItem(kurus_to_tl_str(s.genel_toplam_kurus)))
+            self.tablo.setItem(satir_idx, 9, QTableWidgetItem(s.odeme_tipi.upper()))
 
             durum_item = QTableWidgetItem(s.durum.upper())
             if s.durum == "iptal":
                 durum_item.setForeground(QtGui.QColor("#ff4757"))
             else:
                 durum_item.setForeground(QtGui.QColor("#2ed573"))
-            self.tablo.setItem(satir_idx, 8, durum_item)
+            self.tablo.setItem(satir_idx, 10, durum_item)
 
         self.lbl_bilgi.setText(f"Toplam {len(siparisler)} sipariş listelendi.")
 
@@ -281,8 +337,14 @@ class SiparislerPage(QWidget):
             QMessageBox.critical(self, "Hata", "Sipariş bulunamadı.")
             return
 
-        diyalog = SiparisDetayDiyalog(siparis, self)
-        diyalog.exec_()
+        diyalog = SiparisDetayDiyalog(
+            siparis,
+            satis_servisi=self.satis_servisi,
+            aktif_kullanici=self.aktif_kullanici,
+            parent=self
+        )
+        if diyalog.exec_() == QDialog.Accepted:
+            self.listeyi_guncelle()
 
     def siparis_iptal_et(self):
         s_id = self.secili_siparis_id()

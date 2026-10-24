@@ -24,20 +24,27 @@ from PyQt5.QtWidgets import (
 
 from app.domain.models import Musteri
 from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
+from app.domain.validators import (
+    tc_kimlik_dogrula,
+    tc_maskele,
+    telefon_formatla,
+    vergi_no_dogrula,
+)
 from app.services.musteri_servisi import MusteriServisi
 
 
 class MusteriDiyalog(QDialog):
     """Yeni müşteri ekleme ve düzenleme penceresi."""
 
-    def __init__(self, parent=None, musteri_servisi: MusteriServisi = None, musteri: Musteri = None):
+    def __init__(self, parent=None, musteri_servisi: MusteriServisi = None, musteri: Musteri = None, aktif_kullanici=None):
         super().__init__(parent)
         self.musteri_servisi = musteri_servisi
         self.musteri = musteri
+        self.aktif_kullanici = aktif_kullanici
         self.setWindowTitle("Müşteri Düzenle" if musteri else "Yeni Müşteri Ekle")
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumSize(500, 540)
-        self.resize(520, 550)
+        self.setMinimumSize(500, 560)
+        self.resize(520, 570)
         self.init_ui()
 
     def init_ui(self):
@@ -59,15 +66,31 @@ class MusteriDiyalog(QDialog):
 
         self.txt_tel = QLineEdit()
         self.txt_tel.setPlaceholderText("Örn: 0532 123 4567")
+        regex_tel = QtCore.QRegularExpression(r"^[\d\s\+\-\(\)]{0,20}$")
+        self.txt_tel.setValidator(QtGui.QRegularExpressionValidator(regex_tel, self.txt_tel))
+        self.txt_tel.setMaxLength(20)
         form.addRow("Telefon Numarası:", self.txt_tel)
 
         self.txt_eposta = QLineEdit()
         self.txt_eposta.setPlaceholderText("Örn: info@ornekservis.com")
         form.addRow("E-Posta Adresi:", self.txt_eposta)
 
+        # TC / Vergi No ve Hata Etiketi
+        vergi_kutu = QVBoxLayout()
         self.txt_vergi = QLineEdit()
-        self.txt_vergi.setPlaceholderText("TC Kimlik veya Vergi No")
-        form.addRow("Vergi No / TCKN:", self.txt_vergi)
+        self.txt_vergi.setPlaceholderText("TC Kimlik (11 hane) veya Vergi No (10 hane)")
+        regex_tc = QtCore.QRegularExpression(r"^\d{0,11}$")
+        self.txt_vergi.setValidator(QtGui.QRegularExpressionValidator(regex_tc, self.txt_vergi))
+        self.txt_vergi.setMaxLength(11)
+        self.txt_vergi.textChanged.connect(self._vergi_degisti)
+        vergi_kutu.addWidget(self.txt_vergi)
+
+        self.lbl_vergi_hata = QLabel("")
+        self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_vergi_hata.hide()
+        vergi_kutu.addWidget(self.lbl_vergi_hata)
+
+        form.addRow("Vergi No / TCKN:", vergi_kutu)
 
         self.txt_adres = QTextEdit()
         self.txt_adres.setMinimumHeight(65)
@@ -94,8 +117,46 @@ class MusteriDiyalog(QDialog):
             self.txt_ad.setText(self.musteri.ad_soyad)
             self.txt_tel.setText(self.musteri.telefon)
             self.txt_eposta.setText(self.musteri.eposta)
-            self.txt_vergi.setText(self.musteri.vergi_no_tc)
+
+            # KVKK: Tam TC yalnızca yöneticiye gösterilir
+            is_admin = bool(self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici")
+            if is_admin or not self.musteri.vergi_no_tc:
+                self.txt_vergi.setText(self.musteri.vergi_no_tc)
+            else:
+                self.txt_vergi.setText(tc_maskele(self.musteri.vergi_no_tc))
+                self.txt_vergi.setReadOnly(True)
+                self.txt_vergi.setToolTip("KVKK gereği TC kimlik numarasını yalnızca yönetici düzenleyebilir.")
+
             self.txt_adres.setPlainText(self.musteri.adres)
+
+    def _vergi_degisti(self, metin: str):
+        v = metin.strip()
+        if not v:
+            self.lbl_vergi_hata.hide()
+            return
+
+        if len(v) == 11:
+            if tc_kimlik_dogrula(v):
+                self.lbl_vergi_hata.setText("✅ Geçerli TC Kimlik Numarası")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #2ecc71;")
+                self.lbl_vergi_hata.show()
+            else:
+                self.lbl_vergi_hata.setText("⚠️ TC Kimlik No 11 haneli ve geçerli olmalıdır")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+                self.lbl_vergi_hata.show()
+        elif len(v) == 10:
+            if vergi_no_dogrula(v):
+                self.lbl_vergi_hata.setText("ℹ️ Geçerli 10 Haneli Vergi Numarası")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #3498db;")
+                self.lbl_vergi_hata.show()
+            else:
+                self.lbl_vergi_hata.setText("⚠️ Vergi Numarası 10 haneli rakam olmalıdır")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+                self.lbl_vergi_hata.show()
+        else:
+            self.lbl_vergi_hata.setText("ℹ️ TC (11 hane) veya Vergi No (10 hane)")
+            self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #a4b0be;")
+            self.lbl_vergi_hata.show()
 
     def kaydet(self):
         ad = self.txt_ad.text().strip()
@@ -104,12 +165,27 @@ class MusteriDiyalog(QDialog):
             self.txt_ad.setFocus()
             return
 
+        vergi_tc = self.txt_vergi.text().strip()
+        # Eğer maskeli ise ve değiştirilmediyse orijinalini koru
+        if self.musteri and vergi_tc == tc_maskele(self.musteri.vergi_no_tc):
+            vergi_tc = self.musteri.vergi_no_tc
+
+        # Arayüz seviyesi TC doğrulaması ve Türkçe mesaj
+        if vergi_tc:
+            if len(vergi_tc) == 11 and not tc_kimlik_dogrula(vergi_tc):
+                self.lbl_vergi_hata.setText("⚠️ TC Kimlik No 11 haneli ve geçerli olmalıdır")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+                self.lbl_vergi_hata.show()
+                QMessageBox.warning(self, "Geçersiz TCKN", "TC Kimlik No 11 haneli ve geçerli olmalıdır!")
+                self.txt_vergi.setFocus()
+                return
+
         try:
             if self.musteri:
                 self.musteri.ad_soyad = ad
                 self.musteri.telefon = self.txt_tel.text().strip()
                 self.musteri.eposta = self.txt_eposta.text().strip()
-                self.musteri.vergi_no_tc = self.txt_vergi.text().strip()
+                self.musteri.vergi_no_tc = vergi_tc
                 self.musteri.adres = self.txt_adres.toPlainText().strip()
                 self.musteri_servisi.musteri_guncelle(self.musteri)
                 QMessageBox.information(self, "Başarılı", "Müşteri bilgileri güncellendi.")
@@ -119,7 +195,7 @@ class MusteriDiyalog(QDialog):
                     ad_soyad=ad,
                     telefon=self.txt_tel.text().strip(),
                     eposta=self.txt_eposta.text().strip(),
-                    vergi_no_tc=self.txt_vergi.text().strip(),
+                    vergi_no_tc=vergi_tc,
                     adres=self.txt_adres.toPlainText().strip()
                 )
                 self.musteri_servisi.musteri_ekle(yeni)
@@ -349,7 +425,7 @@ class MusterilerPage(QWidget):
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo.horizontalHeader().setMinimumSectionSize(65)
-        m_widths = [50, 220, 115, 130, 110, 105, 180, 75]
+        m_widths = [50, 210, 120, 130, 150, 105, 170, 75]
         for col, w in enumerate(m_widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.musteri_duzenle_ac)
@@ -392,9 +468,21 @@ class MusterilerPage(QWidget):
             self.tablo.insertRow(r_idx)
             self.tablo.setItem(r_idx, 0, QTableWidgetItem(str(m.id)))
             self.tablo.setItem(r_idx, 1, QTableWidgetItem(m.ad_soyad))
-            self.tablo.setItem(r_idx, 2, QTableWidgetItem(m.telefon))
+            self.tablo.setItem(r_idx, 2, QTableWidgetItem(telefon_formatla(m.telefon)))
             self.tablo.setItem(r_idx, 3, QTableWidgetItem(m.eposta))
-            self.tablo.setItem(r_idx, 4, QTableWidgetItem(m.vergi_no_tc))
+
+            # KVKK Maskeleme ve Geçersiz TC Rozeti
+            tc_str = m.vergi_no_tc or ""
+            if tc_str:
+                if len(tc_str) == 11 and not tc_kimlik_dogrula(tc_str):
+                    tc_item = QTableWidgetItem(f"{tc_maskele(tc_str)} ⚠️ Geçersiz TC")
+                    tc_item.setForeground(QtGui.QColor("#ff4757"))
+                    tc_item.setToolTip("TCKN resmi algoritma kontrolünden geçemedi!")
+                else:
+                    tc_item = QTableWidgetItem(tc_maskele(tc_str))
+            else:
+                tc_item = QTableWidgetItem("-")
+            self.tablo.setItem(r_idx, 4, tc_item)
 
             # Bakiye
             bakiye_item = QTableWidgetItem(kurus_to_tl_str(m.bakiye_kurus))
@@ -416,7 +504,7 @@ class MusterilerPage(QWidget):
         return int(self.tablo.item(satir, 0).text())
 
     def yeni_musteri_ac(self):
-        diyalog = MusteriDiyalog(self, self.musteri_servisi)
+        diyalog = MusteriDiyalog(self, self.musteri_servisi, aktif_kullanici=self.aktif_kullanici)
         if diyalog.exec_() == QDialog.Accepted:
             self.listeyi_guncelle()
 
@@ -430,7 +518,7 @@ class MusterilerPage(QWidget):
         if not musteri:
             return
 
-        diyalog = MusteriDiyalog(self, self.musteri_servisi, musteri)
+        diyalog = MusteriDiyalog(self, self.musteri_servisi, musteri, aktif_kullanici=self.aktif_kullanici)
         if diyalog.exec_() == QDialog.Accepted:
             self.listeyi_guncelle()
 

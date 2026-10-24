@@ -125,12 +125,49 @@ class UrunServisi:
                 raise ValueError(f"'{parca_kodu}' parça kodu başka bir ürüne ait!") from e
             raise ValueError(f"Güncelleme hatası: {e}") from e
 
-    def urun_pasife_al(self, urun_id: int) -> bool:
-        """Ürünü sert silmek yerine pasife alır (geçmiş siparişler bozulmaz)."""
+    def urun_pasife_al(self, urun_id: int, kullanici_id: int | None = None) -> bool:
+        """Ürünü sert silmek yerine pasife alır (geçmiş siparişler bozulmaz), denetim ve hareket kaydı oluşturur."""
+        urun = self.urun_getir(urun_id)
+        if not urun:
+            raise ValueError(f"ID {urun_id} numaralı ürün bulunamadı.")
+
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
         with conn:
             cur.execute("UPDATE urun SET aktif = 0 WHERE id = ?", (urun_id,))
+            cur.execute("""
+                INSERT INTO denetim_log (kullanici_id, islem, detay)
+                VALUES (?, 'urun_pasife_al', ?)
+            """, (kullanici_id, f"Ürün #{urun_id} ({urun.parca_kodu} - {urun.ad}) pasife alındı"))
+            cur.execute("""
+                INSERT INTO stok_hareket (
+                    urun_id, hareket_tipi, adet_degisim, onceki_stok, sonraki_stok,
+                    referans_tipi, referans_id, kullanici_id, aciklama
+                ) VALUES (?, 'sayim_duzeltme', 0, ?, ?, 'urun_durum', ?, ?, 'Ürün pasife alındı')
+            """, (urun_id, urun.stok, urun.stok, urun_id, kullanici_id))
+        conn.close()
+        return True
+
+    def urun_aktife_al(self, urun_id: int, kullanici_id: int | None = None) -> bool:
+        """Pasife alınmış bir ürünü tekrar aktif hale getirir, denetim ve hareket kaydı oluşturur."""
+        urun = self.urun_getir(urun_id)
+        if not urun:
+            raise ValueError(f"ID {urun_id} numaralı ürün bulunamadı.")
+
+        conn = get_db_connection(self.db_path)
+        cur = conn.cursor()
+        with conn:
+            cur.execute("UPDATE urun SET aktif = 1 WHERE id = ?", (urun_id,))
+            cur.execute("""
+                INSERT INTO denetim_log (kullanici_id, islem, detay)
+                VALUES (?, 'urun_aktife_al', ?)
+            """, (kullanici_id, f"Ürün #{urun_id} ({urun.parca_kodu} - {urun.ad}) tekrar aktife alındı"))
+            cur.execute("""
+                INSERT INTO stok_hareket (
+                    urun_id, hareket_tipi, adet_degisim, onceki_stok, sonraki_stok,
+                    referans_tipi, referans_id, kullanici_id, aciklama
+                ) VALUES (?, 'sayim_duzeltme', 0, ?, ?, 'urun_durum', ?, ?, 'Ürün tekrar aktife alındı')
+            """, (urun_id, urun.stok, urun.stok, urun_id, kullanici_id))
         conn.close()
         return True
 
@@ -150,7 +187,7 @@ class UrunServisi:
         return self._satiri_urune_cevir(row) if row else None
 
     def urun_getir_parca_kodu(self, parca_kodu: str) -> Urun | None:
-        """Parça kodu ile ürün arar."""
+        """Parça kodu ile ürün arar (yalnızca aktif ürünler)."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
         cur.execute("""
@@ -165,7 +202,7 @@ class UrunServisi:
         return self._satiri_urune_cevir(row) if row else None
 
     def urun_getir_barkod(self, barkod: str) -> Urun | None:
-        """Barkod ile ürün arar."""
+        """Barkod ile ürün arar (yalnızca aktif ürünler)."""
         if not barkod:
             return None
         conn = get_db_connection(self.db_path)
@@ -187,12 +224,14 @@ class UrunServisi:
         kategori_id: int | None = None,
         marka_id: int | None = None,
         sadece_aktif: bool = True,
+        aktiflik_filtresi: str | None = None,
         limit: int = 100,
         offset: int = 0
     ) -> list[Urun]:
         """
         Kısmi arama (parça kodu, barkod, OEM no, ad, marka adı) yürütür.
         50.000 üründe < 100 ms indeksli hızlı sorgu.
+        aktiflik_filtresi: 'aktif' (varsayılan), 'pasif', 'tumu'.
         """
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -200,7 +239,12 @@ class UrunServisi:
         kosullar = []
         parametreler = []
 
-        if sadece_aktif:
+        # Aktiflik filtresi belirleme
+        if aktiflik_filtresi == "pasif":
+            kosullar.append("u.aktif = 0")
+        elif aktiflik_filtresi == "tumu" or (not sadece_aktif and aktiflik_filtresi is None):
+            pass  # Filtre yok
+        else:
             kosullar.append("u.aktif = 1")
 
         if kategori_id:
@@ -239,7 +283,8 @@ class UrunServisi:
         terim: str = "",
         kategori_id: int | None = None,
         marka_id: int | None = None,
-        sadece_aktif: bool = True
+        sadece_aktif: bool = True,
+        aktiflik_filtresi: str | None = None
     ) -> int:
         """Filtrelere uyan toplam ürün sayısını döner (sayfalama için)."""
         conn = get_db_connection(self.db_path)
@@ -248,8 +293,13 @@ class UrunServisi:
         kosullar = []
         parametreler = []
 
-        if sadece_aktif:
+        if aktiflik_filtresi == "pasif":
+            kosullar.append("u.aktif = 0")
+        elif aktiflik_filtresi == "tumu" or (not sadece_aktif and aktiflik_filtresi is None):
+            pass
+        else:
             kosullar.append("u.aktif = 1")
+
         if kategori_id:
             kosullar.append("u.kategori_id = ?")
             parametreler.append(kategori_id)

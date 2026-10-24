@@ -14,13 +14,17 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\OtoYedekParca
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-OutputDir=..\dist_installer
-OutputBaseFilename=OtoYedekParca_Kurulum_v1.0.0
+OutputDir=..\dist\installer
+OutputBaseFilename=OtoYedekParca_Setup_v1.0.0
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
+CloseApplications=yes
+RestartApplications=no
+SetupIconFile=..\assets\icon.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
@@ -30,34 +34,40 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\OtoYedekParca\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\THIRD_PARTY_LICENSES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// Uygulama kaldırılırken verilerin silinip silinmeyeceğini kullanıcıya sor
+// Uygulama kaldırılırken kullanıcı verilerinin korunması / sorulması
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
-  ResultCode: Integer;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
     DataDir := ExpandConstant('{userappdata}\OtoYedekParca');
-    if DirExists(DataDir) then
+    // Sessiz modda (/SILENT veya /VERYSILENT) kullanıcı verisi ASLA silinmez.
+    if not WizardSilent then
     begin
-      if MsgBox('Dükkan veritabanı, sipariş geçmişi ve yedekleriniz şu konumda saklanmaktadır:' + #13#10 +
-                DataDir + #13#10#13#10 +
-                'Bu veritabanını ve tüm yedekleri kalıcı olarak silmek istiyor musunuz?' + #13#10 +
-                '(İleride tekrar kuracaksanız veya verilerinizi saklamak istiyorsanız HAYIR seçiniz)',
-                mbConfirmation, MB_YESNO) = IDYES then
+      if DirExists(DataDir) then
       begin
-        DelTree(DataDir, True, True, True);
+        // Varsayılan seçenek HAYIR (MB_DEFBUTTON2)
+        if MsgBox('Dükkan veritabanı, sipariş geçmişi ve yedekleriniz şu konumda korunmaktadır:' + #13#10 +
+                  DataDir + #13#10#13#10 +
+                  'Bu veritabanını ve tüm yedekleri kalıcı olarak silmek istiyor musunuz?' + #13#10 +
+                  '(Tavsiye edilen: İleride tekrar kuracaksanız veya verilerinizi saklamak istiyorsanız HAYIR seçiniz)',
+                  mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        begin
+          DelTree(DataDir, True, True, True);
+        end;
       end;
     end;
   end;

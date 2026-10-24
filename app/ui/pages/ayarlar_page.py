@@ -2,8 +2,8 @@
 Sistem Ayarları, Yedekleme, Veritabanı Sağlığı ve Kullanıcı Yönetim Ekranı
 """
 
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import (
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
@@ -144,6 +144,18 @@ class AyarlarPage(QWidget):
         self.tablo_yedek.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.tablo_yedek.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         y_layout.addWidget(self.tablo_yedek)
+
+        is_admin = self.aktif_kullanici and self.aktif_kullanici.rol == "yonetici"
+        if is_admin:
+            alt_bar = QHBoxLayout()
+            alt_bar.addStretch()
+            self.btn_fabrika_sifirla = QPushButton("⚠️ Fabrika Ayarlarına Dön (Tüm Verileri Sil)")
+            self.btn_fabrika_sifirla.setObjectName("btnDanger")
+            self.btn_fabrika_sifirla.setMinimumHeight(38)
+            self.btn_fabrika_sifirla.setStyleSheet("background-color: #c0392b; color: white; font-weight: bold; padding: 6px 14px;")
+            self.btn_fabrika_sifirla.clicked.connect(self.fabrika_ayarlarina_don)
+            alt_bar.addWidget(self.btn_fabrika_sifirla)
+            y_layout.addLayout(alt_bar)
 
         self.tabs.addTab(tab_yedek, "🗄️ Yedekleme & Geri Yükleme")
 
@@ -301,6 +313,8 @@ class AyarlarPage(QWidget):
 
     def yeni_kullanici_ac(self):
         diyalog = QDialog(self)
+        from app.ui.theme import apply_theme
+        apply_theme(diyalog)
         diyalog.setWindowTitle("Yeni Kullanıcı Ekle")
         diyalog.resize(380, 280)
         d_layout = QVBoxLayout(diyalog)
@@ -349,4 +363,144 @@ class AyarlarPage(QWidget):
 
         btn_box.accepted.connect(kaydet)
         btn_box.rejected.connect(diyalog.reject)
-        diyalog.exec_()
+        diyalog.exec()
+
+    def fabrika_ayarlarina_don(self):
+        """
+        Yönetici doğrulaması ve 'SIFIRLA' onayı ile tüm verileri sıfırlar.
+        Önce tam otomatik güvenlik yedeği alır, denetim kaydına yazar ve
+        işlem sonunda ilk kurulum sihirbazını tetikler.
+        """
+        if not self.aktif_kullanici or self.aktif_kullanici.rol != "yonetici":
+            QMessageBox.warning(self, "Yetkisiz İşlem", "Bu işlem yalnızca Yönetici yetkisine sahip kullanıcılar tarafından gerçekleştirilebilir.")
+            return
+
+        diyalog = QDialog(self)
+        from app.ui.theme import apply_theme
+        apply_theme(diyalog)
+        diyalog.setWindowTitle("⚠️ Fabrika Ayarlarına Sıfırlama Onayı")
+        diyalog.setWindowFlags(diyalog.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        diyalog.resize(460, 320)
+        d_layout = QVBoxLayout(diyalog)
+        d_layout.setSpacing(12)
+
+        lbl_uyari = QLabel(
+            "<b>DİKKAT: TÜM VERİLER SİLİNECEKTİR!</b><br><br>"
+            "Bu işlem mevcut tüm ürünleri, stokları, siparişleri, cari hesapları "
+            "ve ayarları kalıcı olarak silecektir.<br>"
+            "İşlem öncesinde veritabanınızın tam bir <b>güvenlik yedeği</b> otomatik olarak alınacaktır.<br><br>"
+            "Devam etmek için yönetici parolanızı giriniz ve onay kutusuna <b>SIFIRLA</b> yazınız."
+        )
+        lbl_uyari.setWordWrap(True)
+        lbl_uyari.setStyleSheet("color: #e74c3c; font-size: 10pt;")
+        d_layout.addWidget(lbl_uyari)
+
+        kart = QFrame()
+        kart.setObjectName("cardFrame")
+        form = QFormLayout(kart)
+
+        txt_parola = QLineEdit()
+        txt_parola.setEchoMode(QLineEdit.Password)
+        txt_parola.setPlaceholderText("Yönetici parolanız")
+        form.addRow("Yönetici Parolası (*):", txt_parola)
+
+        txt_kelime = QLineEdit()
+        txt_kelime.setPlaceholderText("SIFIRLA")
+        form.addRow("Onay Kelimesi (*):", txt_kelime)
+
+        d_layout.addWidget(kart)
+
+        btn_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        btn_box.button(QtWidgets.QDialogButtonBox.Ok).setText("Tüm Verileri Sıfırla")
+        d_layout.addWidget(btn_box)
+
+        # Referanslar
+        diyalog.txt_parola = txt_parola
+        diyalog.txt_kelime = txt_kelime
+
+        def onayla():
+            parola = txt_parola.text().strip()
+            kelime = txt_kelime.text().strip()
+
+            if not parola:
+                QMessageBox.warning(diyalog, "Eksik Bilgi", "Lütfen yönetici parolanızı giriniz.")
+                return
+
+            # 1. Parola doğrula
+            try:
+                dogrulandi = self.kimlik_servisi.giris_yap(self.aktif_kullanici.kullanici_adi, parola)
+            except Exception:
+                dogrulandi = None
+
+            if not dogrulandi:
+                QMessageBox.critical(
+                    diyalog,
+                    "Hatalı Parola",
+                    "Girdiğiniz yönetici parolası hatalı! İşlem iptal edildi, hiçbir veri silinmedi."
+                )
+                diyalog.reject()
+                return
+
+            # 2. Onay kelimesi doğrula
+            if kelime != "SIFIRLA":
+                QMessageBox.critical(
+                    diyalog,
+                    "Hatalı Onay Kelimesi",
+                    "Onay kelimesi tam olarak 'SIFIRLA' olmalıdır! İşlem iptal edildi, hiçbir veri silinmedi."
+                )
+                diyalog.reject()
+                return
+
+            # 3. İki kontrol de geçti: Güvenlik yedeği al
+            try:
+                yedek_dosyasi = self.yedek_servisi.yedek_al()
+            except Exception as ye:
+                QMessageBox.critical(
+                    diyalog,
+                    "Güvenlik Yedeği Alınamadı",
+                    f"Sıfırlama öncesi otomatik güvenlik yedeği alınamadığı için işlem durduruldu:\n{ye}"
+                )
+                diyalog.reject()
+                return
+
+            # 4. Denetim kaydı ve veritabanı sıfırlama
+            try:
+                conn = get_db_connection(self.db_path)
+                cur = conn.cursor()
+                with conn:
+                    # Denetim kaydı ekle
+                    cur.execute(
+                        "INSERT INTO denetim_log (kullanici_id, islem, detay) VALUES (?, 'FABRIKA_AYARLARI_SIFIRLAMA', ?)",
+                        (self.aktif_kullanici.id, f"Güvenlik yedeği alındı: {yedek_dosyasi.name}")
+                    )
+                    # Tabloları temizle
+                    tablolar = [
+                        "siparis_kalem", "siparis", "stok_hareket", "tahsilat",
+                        "mal_kabul_kalem", "mal_kabul", "tedarikci",
+                        "musteri", "urun", "marka", "kategori", "ayar", "kullanici"
+                    ]
+                    for t in tablolar:
+                        cur.execute(f"DELETE FROM {t}")
+                conn.close()
+
+                QMessageBox.information(
+                    diyalog,
+                    "Fabrika Ayarlarına Sıfırlandı",
+                    "Tüm veriler başarıyla sıfırlandı ve otomatik güvenlik yedeği alındı.\n"
+                    "Sistem ilk kurulum sihirbazına yönlendiriliyor."
+                )
+                diyalog.accept()
+
+                # İlk kurulum sihirbazını aç
+                from app.ui.pages.login_dialog import LoginDialog
+                sihirbaz = LoginDialog(self.kimlik_servisi, self.window())
+                apply_theme(sihirbaz)
+                sihirbaz.exec()
+
+            except Exception as e:
+                QMessageBox.critical(diyalog, "Sıfırlama Hatası", f"Veritabanı sıfırlanırken hata oluştu:\n{e}")
+
+        btn_box.accepted.connect(onayla)
+        btn_box.rejected.connect(diyalog.reject)
+        diyalog.exec()
+

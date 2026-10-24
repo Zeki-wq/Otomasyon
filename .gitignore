@@ -2,10 +2,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
 *.db-journal
 *.db-wal
 *.db-shm
 dist/
+dist_installer/
 build/
 *.spec
 !packaging/otoyedekparca.spec
@@ -14,3 +18,10 @@ build/
 .venv
 env/
 venv/
+logs/
+backups/
+yedek/
+*.pfx
+scratch/
+scratch_*.json
+

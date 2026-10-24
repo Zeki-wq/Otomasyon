@@ -12,8 +12,7 @@ a = Analysis(
     pathex=[str(kok_dizin)],
     binaries=[],
     datas=[
-        (str(kok_dizin / 'app' / 'db' / 'migrations' / '0001_initial.sql'), 'app/db/migrations'),
-        (str(kok_dizin / 'legacy' / 'urunler12.db'), 'legacy'),
+        (str(kok_dizin / 'app' / 'db' / 'migrations'), 'app/db/migrations'),
     ],
     hiddenimports=[
         'openpyxl',
@@ -28,7 +27,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pandas', 'tkinter', 'matplotlib'],
+    excludes=['pandas', 'tkinter', 'matplotlib', 'torch', 'torchvision', 'scipy', 'yt_dlp'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -53,6 +52,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(kok_dizin / 'assets' / 'icon.ico'),
 )
 
 coll = COLLECT(

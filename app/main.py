@@ -11,8 +11,8 @@ KOK_DIZIN = Path(__file__).resolve().parent.parent
 if str(KOK_DIZIN) not in sys.path:
     sys.path.insert(0, str(KOK_DIZIN))
 
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app.config import APP_NAME, APP_VERSION, DEFAULT_DB_PATH, ensure_app_dirs
 from app.db.connection import check_db_health, get_db_connection
@@ -50,8 +50,10 @@ def tek_ornek_kilidi_al(app: QApplication) -> QtCore.QSharedMemory:
 
 def main():
     # 1. High-DPI Ayarları (1366x768 ve %125-150 ölçekleme için)
-    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+    if hasattr(QtCore.Qt, "AA_EnableHighDpiScaling"):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    if hasattr(QtCore.Qt, "AA_UseHighDpiPixmaps"):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
 
     # 2. Loglama ve Hata Yakalama
     logger = setup_logging()
@@ -88,26 +90,6 @@ def main():
                 "Lütfen yedek klasöründen en son sağlam yedeği geri yükleyiniz."
             )
 
-        # Eski veritabanı göç kontrolü
-        conn = get_db_connection(DEFAULT_DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT deger FROM ayar WHERE anahtar = 'legacy_import_tamamlandi'")
-        row = cur.fetchone()
-        legacy_tamamlandi = row and row["deger"] == "1"
-        conn.close()
-
-        if not legacy_tamamlandi:
-            # Varsa legacy/urunler12.db veya urunler12.db dosyasını aktar
-            legacy_adaylari = [
-                KOK_DIZIN / "legacy" / "urunler12.db",
-                KOK_DIZIN / "urunler12.db"
-            ]
-            for aday in legacy_adaylari:
-                if aday.exists():
-                    logger.info("Eski veritabanı tespit edildi, göç başlatılıyor: %s", aday)
-                    import_legacy_database(aday, DEFAULT_DB_PATH)
-                    break
-
     except Exception as e:
         logger.exception("Başlatma sırasında kritik hata: %s", e)
         QMessageBox.critical(None, "Kritik Başlatma Hatası", f"Veritabanı hazırlığı başarısız oldu:\n{e}")
@@ -126,7 +108,7 @@ def main():
     login_dlg = LoginDialog(kimlik_servisi)
     apply_theme(login_dlg)
 
-    if login_dlg.exec_() != QtWidgets.QDialog.Accepted:
+    if login_dlg.exec() != QtWidgets.QDialog.Accepted:
         logger.info("Kullanıcı giriş yapmadan çıkış yaptı.")
         sys.exit(0)
 
@@ -157,7 +139,7 @@ def main():
 
     app.aboutToQuit.connect(kapanis_yedegi)
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

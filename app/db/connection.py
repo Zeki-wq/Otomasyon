@@ -2,16 +2,16 @@
 SQLite Veritabanı Bağlantı ve Sağlık Kontrolü Modülü
 """
 
+import logging
 import sqlite3
 from pathlib import Path
-from typing import Optional, Union
+
 from app.config import DEFAULT_DB_PATH, ensure_app_dirs
-import logging
 
 logger = logging.getLogger("otoyedekparca")
 
 
-def get_db_connection(db_path: Optional[Union[Path, str]] = None) -> sqlite3.Connection:
+def get_db_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
     """
     Güvenli SQLite bağlantısı üretir.
     - foreign_keys = ON
@@ -45,7 +45,7 @@ def get_db_connection(db_path: Optional[Union[Path, str]] = None) -> sqlite3.Con
     return conn
 
 
-def check_db_health(db_path: Optional[Union[Path, str]] = None) -> tuple[bool, str]:
+def check_db_health(db_path: Path | str | None = None) -> tuple[bool, str]:
     """
     Veritabanı sağlık kontrolünü yürütür (PRAGMA quick_check).
     Dönüş: (saglikli_mi, aciklama)

@@ -3,8 +3,8 @@ Para, Kuruş ve KDV Dönüşüm Modülü
 Tüm parasal değerler veritabanında ve bellek içinde tamsayı kuruş (INTEGER) olarak saklanır.
 """
 
-from decimal import Decimal, ROUND_HALF_UP
 import re
+from decimal import ROUND_HALF_UP, Decimal
 
 
 def kurus_to_tl_str(kurus: int, sembol: bool = True) -> str:
@@ -68,7 +68,7 @@ def tl_str_to_kurus(metin: str) -> int:
 
     try:
         dec = Decimal(temiz)
-        kurus_dec = (dec * Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        kurus_dec = (dec * Decimal(100)).quantize(Decimal(1), rounding=ROUND_HALF_UP)
         sonuc = int(kurus_dec)
         return -sonuc if is_negative else sonuc
     except Exception:
@@ -89,7 +89,7 @@ def kdv_hesapla(matrah_kurus: int, kdv_orani: int = 20) -> tuple[int, int]:
 
     d_matrah = Decimal(matrah_kurus)
     d_oran = Decimal(kdv_orani) / Decimal(100)
-    d_kdv = (d_matrah * d_oran).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    d_kdv = (d_matrah * d_oran).quantize(Decimal(1), rounding=ROUND_HALF_UP)
 
     kdv_tutari = int(d_kdv)
     toplam = matrah_kurus + kdv_tutari
@@ -106,7 +106,7 @@ def kdv_dahilden_ayir(toplam_kurus: int, kdv_orani: int = 20) -> tuple[int, int]
 
     d_toplam = Decimal(toplam_kurus)
     d_carpan = Decimal(1) + (Decimal(kdv_orani) / Decimal(100))
-    d_matrah = (d_toplam / d_carpan).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    d_matrah = (d_toplam / d_carpan).quantize(Decimal(1), rounding=ROUND_HALF_UP)
 
     matrah = int(d_matrah)
     kdv_tutari = toplam_kurus - matrah

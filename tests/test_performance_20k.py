@@ -4,7 +4,9 @@ Faz 2 Kapısı: 20.000 üründe tamamına erişilir, arama < 100 ms sürer.
 """
 
 import time
+
 import pytest
+
 from app.db.connection import get_db_connection
 from app.db.migrations.migrator import run_migrations
 from app.services.urun_servisi import UrunServisi

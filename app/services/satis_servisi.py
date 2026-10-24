@@ -3,26 +3,26 @@ Satış, Sepet ve Sipariş Yönetim Servisi
 Tüm stok düşümü ve sipariş kayıtları tek transaction içinde atomik yürütülür.
 """
 
-import sqlite3
 from datetime import datetime
-from typing import Optional, List, Union, Dict, Any
 from pathlib import Path
+from typing import Any
+
+from app.db.connection import get_db_connection
 from app.domain.models import Siparis, SiparisKalem
 from app.domain.money import kdv_hesapla
-from app.db.connection import get_db_connection
 
 
 class SatisServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
     def siparis_olustur(
         self,
-        kalemler: List[Dict[str, Any]],
-        musteri_id: Optional[int] = None,
+        kalemler: list[dict[str, Any]],
+        musteri_id: int | None = None,
         odeme_tipi: str = "nakit",
         aciklama: str = "",
-        kullanici_id: Optional[int] = None
+        kullanici_id: int | None = None
     ) -> Siparis:
         """
         Sepetteki kalemlerle yeni sipariş oluşturur.
@@ -221,7 +221,7 @@ class SatisServisi:
         self,
         siparis_id: int,
         aciklama: str = "",
-        kullanici_id: Optional[int] = None
+        kullanici_id: int | None = None
     ) -> bool:
         """
         Siparişi iptal eder ve tüm kalemlerin stoğunu atomik olarak geri iade eder.
@@ -297,13 +297,13 @@ class SatisServisi:
 
     def siparisleri_getir(
         self,
-        musteri_id: Optional[int] = None,
-        durum: Optional[str] = None,
-        baslangic_tarih: Optional[str] = None,
-        bitis_tarih: Optional[str] = None,
+        musteri_id: int | None = None,
+        durum: str | None = None,
+        baslangic_tarih: str | None = None,
+        bitis_tarih: str | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Siparis]:
+    ) -> list[Siparis]:
         """Filtreli sipariş listesini döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -362,7 +362,7 @@ class SatisServisi:
             for r in rows
         ]
 
-    def siparis_detay_getir(self, siparis_id: int) -> Optional[Siparis]:
+    def siparis_detay_getir(self, siparis_id: int) -> Siparis | None:
         """Tek siparişi kalemleriyle birlikte döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

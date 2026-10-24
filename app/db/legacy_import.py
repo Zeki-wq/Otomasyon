@@ -4,10 +4,11 @@ Orijinal tablolardaki 2 ürün ve 17 sipariş kaydını yeni ilişkisel şemaya 
 İşlem idempotent'tir (birden fazla kez güvenle çağrılabilir).
 """
 
+import logging
 import sqlite3
 from pathlib import Path
-from typing import Optional, Union, NamedTuple
-import logging
+from typing import NamedTuple
+
 from app.db.connection import get_db_connection
 from app.db.migrations.migrator import run_migrations
 
@@ -24,8 +25,8 @@ class LegacyImportResult(NamedTuple):
 
 
 def import_legacy_database(
-    legacy_db_path: Union[Path, str],
-    target_db_path: Optional[Union[Path, str]] = None
+    legacy_db_path: Path | str,
+    target_db_path: Path | str | None = None
 ) -> LegacyImportResult:
     """
     Eski SQLite veritabanındaki verileri yeni veritabanına taşır.

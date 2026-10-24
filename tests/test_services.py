@@ -4,13 +4,14 @@ Atomiklik, yetersiz stok reddi, iptalde stok iadesi, 100 ardışık sipariş, ye
 """
 
 import pytest
+
 from app.db.migrations.migrator import run_migrations
-from app.domain.models import Urun, Musteri
+from app.domain.models import Musteri, Urun
 from app.services.kimlik_servisi import KimlikServisi
-from app.services.urun_servisi import UrunServisi
-from app.services.stok_servisi import StokServisi
-from app.services.satis_servisi import SatisServisi
 from app.services.musteri_servisi import MusteriServisi
+from app.services.satis_servisi import SatisServisi
+from app.services.stok_servisi import StokServisi
+from app.services.urun_servisi import UrunServisi
 from app.services.yedek_servisi import YedekServisi
 
 

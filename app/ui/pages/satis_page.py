@@ -3,18 +3,31 @@ Hızlı Satış, Sepet ve Kasa Ekranı (Tezgah Akışı)
 Barkod okuyucu destekli, çok kalemli sepet, klavye dostu ve anında stok kontrolü.
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QSpinBox,
-    QMessageBox, QFrame, QRadioButton, QButtonGroup, QCompleter
+    QButtonGroup,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from typing import Optional
+
 from app.domain.models import Urun
-from app.domain.money import kurus_to_tl_str, kdv_hesapla
+from app.domain.money import kdv_hesapla, kurus_to_tl_str
+from app.services.musteri_servisi import MusteriServisi
 from app.services.satis_servisi import SatisServisi
 from app.services.urun_servisi import UrunServisi
-from app.services.musteri_servisi import MusteriServisi
 
 
 class SatisPage(QWidget):
@@ -35,7 +48,7 @@ class SatisPage(QWidget):
         self.aktif_kullanici = aktif_kullanici
 
         self.sepet = []  # List[dict]: {"urun": Urun, "adet": int, "birim_fiyat_kurus": int, "kdv_orani": int}
-        self.secili_hizli_urun: Optional[Urun] = None
+        self.secili_hizli_urun: Urun | None = None
 
         self.init_ui()
         self.musterileri_doldur()
@@ -292,7 +305,7 @@ class SatisPage(QWidget):
         self.spn_adet.setValue(1)
         self.txt_barkod_ara.setFocus()
 
-    def _urun_secim_diyalogu(self, urunler: list) -> Optional[Urun]:
+    def _urun_secim_diyalogu(self, urunler: list) -> Urun | None:
         diyalog = QtWidgets.QDialog(self)
         diyalog.setWindowTitle("Birden Fazla Eşleşme - Ürün Seçiniz")
         diyalog.resize(600, 350)

@@ -4,14 +4,15 @@ Ekran görüntüleri kaydetme (docs/ekran/) ve tam satış-iptal-stok döngüsü
 """
 
 from pathlib import Path
+
 import pytest
-from PyQt5.QtCore import Qt
+
 from app.db.migrations.migrator import run_migrations
-from app.domain.models import Urun, Musteri
-from app.services.urun_servisi import UrunServisi
-from app.services.stok_servisi import StokServisi
-from app.services.satis_servisi import SatisServisi
+from app.domain.models import Musteri, Urun
 from app.services.musteri_servisi import MusteriServisi
+from app.services.satis_servisi import SatisServisi
+from app.services.stok_servisi import StokServisi
+from app.services.urun_servisi import UrunServisi
 from app.ui.pages.satis_page import SatisPage
 from app.ui.pages.siparisler_page import SiparislerPage
 from app.ui.pages.stok_page import StokPage

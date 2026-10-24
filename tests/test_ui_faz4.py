@@ -4,16 +4,18 @@ Giriş sihirbazı, cari hesaplar, tahsilat, rol kısıtlamaları, yedekleme ve e
 """
 
 from pathlib import Path
+
 import pytest
 from PyQt5.QtWidgets import QMessageBox
+
 from app.db.migrations.migrator import run_migrations
-from app.domain.models import Musteri, Kullanici
+from app.domain.models import Kullanici, Musteri
 from app.services.kimlik_servisi import KimlikServisi
 from app.services.musteri_servisi import MusteriServisi
 from app.services.yedek_servisi import YedekServisi
+from app.ui.pages.ayarlar_page import AyarlarPage
 from app.ui.pages.login_dialog import LoginDialog
 from app.ui.pages.musteriler_page import MusterilerPage
-from app.ui.pages.ayarlar_page import AyarlarPage
 from app.ui.theme import apply_theme
 
 

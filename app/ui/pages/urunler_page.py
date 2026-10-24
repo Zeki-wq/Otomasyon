@@ -5,14 +5,29 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QCheckBox,
-    QMessageBox, QDialog, QFormLayout, QSpinBox, QTextEdit, QFrame
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
+
 from app.domain.models import Urun
 from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
-from app.services.urun_servisi import UrunServisi
 from app.services.stok_servisi import StokServisi
+from app.services.urun_servisi import UrunServisi
 
 
 class UrunDiyalog(QDialog):
@@ -450,8 +465,7 @@ class UrunlerPage(QWidget):
         )
 
         toplam_sayfa = max(1, (self.toplam_urun + self.sayfa_boyutu - 1) // self.sayfa_boyutu)
-        if self.sayfa_no > toplam_sayfa:
-            self.sayfa_no = toplam_sayfa
+        self.sayfa_no = min(self.sayfa_no, toplam_sayfa)
 
         offset = (self.sayfa_no - 1) * self.sayfa_boyutu
 

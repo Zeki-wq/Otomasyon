@@ -6,14 +6,14 @@ Kimlik Doğrulama ve Kullanıcı Yönetim Servisi
 import hashlib
 import os
 import sqlite3
-from typing import Optional, List, Union
 from pathlib import Path
-from app.domain.models import Kullanici
+
 from app.db.connection import get_db_connection
+from app.domain.models import Kullanici
 
 
 class KimlikServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
     @staticmethod
@@ -74,7 +74,7 @@ class KimlikServisi:
             conn.close()
             raise ValueError(f"'{kullanici_adi}' kullanıcı adı zaten kullanımda.")
 
-    def giris_yap(self, kullanici_adi: str, parola: str) -> Optional[Kullanici]:
+    def giris_yap(self, kullanici_adi: str, parola: str) -> Kullanici | None:
         """Kullanıcı adı ve parola doğrulaması yapar."""
         kullanici_adi = kullanici_adi.strip().lower()
         conn = get_db_connection(self.db_path)
@@ -105,7 +105,7 @@ class KimlikServisi:
             )
         return None
 
-    def kullanicilari_listele(self) -> List[Kullanici]:
+    def kullanicilari_listele(self) -> list[Kullanici]:
         """Tüm kullanıcıları listeler."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

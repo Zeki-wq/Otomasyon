@@ -4,24 +4,25 @@ SQLite Online Backup API (conn.backup) kullanarak çalışır durumdaki veritaba
 hiçbir kilitlenme veya veri kaybı olmaksızın güvenle yedekler ve geri yükler.
 """
 
-import sqlite3
+import logging
 import shutil
+import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Union, Dict, Any
-import logging
-from app.config import DEFAULT_DB_PATH, BACKUP_DIR, MAX_BACKUP_COUNT, ensure_app_dirs
-from app.db.connection import get_db_connection, check_db_health
+from typing import Any
+
+from app.config import BACKUP_DIR, DEFAULT_DB_PATH, MAX_BACKUP_COUNT, ensure_app_dirs
+from app.db.connection import check_db_health, get_db_connection
 
 logger = logging.getLogger("otoyedekparca")
 
 
 class YedekServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None, backup_dir: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None, backup_dir: Path | str | None = None):
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.backup_dir = Path(backup_dir) if backup_dir else BACKUP_DIR
 
-    def yedek_al(self, ozel_hedef_dizin: Optional[Union[Path, str]] = None) -> Path:
+    def yedek_al(self, ozel_hedef_dizin: Path | str | None = None) -> Path:
         """
         SQLite backup API ile canlı, tutarlı ve eksiksiz veritabanı yedeği alır.
         Son MAX_BACKUP_COUNT (30) yedeği korur, daha eskileri temizler.
@@ -57,7 +58,7 @@ class YedekServisi:
             logger.error("Yedek alma sırasında hata: %s", e)
             raise RuntimeError(f"Yedek alınamadı: {e}") from e
 
-    def yedekten_geri_yukle(self, yedek_dosyasi: Union[Path, str]) -> bool:
+    def yedekten_geri_yukle(self, yedek_dosyasi: Path | str) -> bool:
         """
         Seçilen bir yedek dosyasından veritabanını geri yükler.
         Geri yükleme öncesinde mevcut aktif veritabanının güvenlik yedeğini alır.
@@ -104,7 +105,7 @@ class YedekServisi:
             logger.error("Geri yükleme hatası: %s", e)
             raise RuntimeError(f"Geri yükleme başarısız: {e}") from e
 
-    def mevcut_yedekleri_listele(self) -> List[Dict[str, Any]]:
+    def mevcut_yedekleri_listele(self) -> list[dict[str, Any]]:
         """Varsayılan yedek klasöründeki yedekleri tarihe göre sıralı listeler."""
         if not self.backup_dir.exists():
             return []

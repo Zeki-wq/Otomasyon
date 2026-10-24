@@ -2,16 +2,26 @@
 Sipariş Geçmişi, Detay Görüntüleme ve İptal/İade Ekranı
 """
 
-from datetime import date, timedelta
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QDateEdit,
-    QMessageBox, QDialog, QFrame
+    QComboBox,
+    QDateEdit,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
 from app.domain.money import kurus_to_tl_str
-from app.services.satis_servisi import SatisServisi
 from app.services.musteri_servisi import MusteriServisi
+from app.services.satis_servisi import SatisServisi
 
 
 class SiparisDetayDiyalog(QDialog):

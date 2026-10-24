@@ -4,8 +4,8 @@
 - [x] `git init` yapıldı, orijinal dosyalar `legacy/` altına dokunulmadan kopyalandı ve ilk commit atıldı.
 - [x] Temel mimari kararlar (`docs/KARARLAR.md`) ve proje kuralları (`.agents/rules/proje_kurallari.md`) oluşturuldu.
 - [x] İmplementasyon planı (`implementation_plan.md`) hazırlandı.
-- [ ] Bölüm 3'teki B1-B8 hatalarını yakalayan başarısız testler (`tests/legacy_bugs/test_legacy_bugs.py`) yazılacak ve çalıştırılacak.
-- [ ] Faz 0 Walkthrough oluşturulup git commit atılacak.
+- [x] Bölüm 3'teki B1-B8 hatalarını yakalayan testler (`tests/legacy_bugs/test_legacy_bugs.py`) yazıldı ve çalıştırıldı (8/8).
+- [x] Faz 0 Walkthrough oluşturulup git commit atıldı.
 
 ## [x] Faz 1: Temel Mimari, Servisler ve Veri Göçü
 - [x] Dizin iskeleti: `app/config.py`, `app/utils/logging.py`, `app/domain/money.py`.
@@ -37,16 +37,17 @@
 - [x] Faz 4 yetkilendirme ve arayüz testleri tamamlandı.
 - [x] Faz 4 git commit tamamlandı.
 
-## [ ] Faz 5: Raporlar ve Veri İçe/Dışa Aktarımı
-- [ ] Raporlar ekranı: Kasa, ciro, en çok satanlar, kritik stok, stok değeri.
-- [ ] Excel ile toplu ürün içe aktarma (önizleme, hata raporlama) ve dışa aktarma (`openpyxl`).
-- [ ] Bilgi fişi ve ekstre PDF çıktısı (`reportlab`).
-- [ ] Faz 5 Walkthrough oluşturulup git commit atılacak.
+## [x] Faz 5: Raporlar ve Veri İçe/Dışa Aktarımı
+- [x] Raporlar ekranı: Kasa, ciro, en çok satanlar, kritik stok: `app/ui/pages/raporlar_page.py`.
+- [x] Excel ile toplu ürün içe aktarma (5.000 satır testli, hata raporlama) ve dışa aktarma: `app/utils/export.py`.
+- [x] Satış bilgi fişi PDF çıktısı ("Bilgi fişidir, mali değeri yoktur" ibaresiyle): `app/utils/export.py`.
+- [x] Faz 5 testleri ve ekran görüntüsü tamamlandı.
+- [x] Faz 5 git commit tamamlandı.
 
-## [ ] Faz 6: Cila, Paketleme ve Teslim
-- [ ] Tek ana pencere (`main_window.py`) ve kenar çubuğu entegrasyonu.
-- [ ] Ekran çözünürlüğü ve DPI testleri (`widget.grab()` ile `docs/ekran/`).
-- [ ] `ruff` kod kalitesi ve tam test koşusu.
-- [ ] Dokümanlar: `KURULUM.md`, `KULLANIM.md`, `YEDEKLEME.md`, `GELISTIRICI.md`, `DEGISIKLIK_GUNLUGU.md`.
-- [ ] PyInstaller ve Inno Setup paketleme betikleri (`packaging/`).
-- [ ] Son Walkthrough üretimi ve kapanış.
+## [x] Faz 6: Cila, Paketleme ve Teslim
+- [x] Tek ana pencere (`main_window.py`) ve kenar çubuğu entegrasyonu.
+- [x] Ekran çözünürlüğü ve DPI testleri (`widget.grab()` ile `docs/ekran/`).
+- [x] `ruff` kod kalitesi (0 hata) ve tam test koşusu (34/34 geçti).
+- [x] Dokümanlar: `KURULUM.md`, `KULLANIM.md`, `YEDEKLEME.md`, `GELISTIRICI.md`, `DEGISIKLIK_GUNLUGU.md`.
+- [x] PyInstaller ve Inno Setup paketleme betikleri (`packaging/`). PyInstaller derlemesi çalıştırıldı ve `dist/OtoYedekParca/OtoYedekParca.exe` üretildi.
+- [x] Son Walkthrough üretimi ve kapanış.

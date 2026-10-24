@@ -3,17 +3,16 @@ Veritabanı Şema Migrasyon Yöneticisi
 PRAGMA user_version ile sıralı .sql migrasyonlarını uygular.
 """
 
-import sqlite3
-from pathlib import Path
-from typing import Optional, Union
 import logging
+from pathlib import Path
+
 from app.db.connection import get_db_connection
 
 logger = logging.getLogger("otoyedekparca")
 MIGRATIONS_DIR = Path(__file__).parent
 
 
-def run_migrations(db_path: Optional[Union[Path, str]] = None) -> int:
+def run_migrations(db_path: Path | str | None = None) -> int:
     """
     Tüm bekleyen SQL migrasyonlarını sırayla çalıştırır.
     Dönüş: Son şema versiyonu

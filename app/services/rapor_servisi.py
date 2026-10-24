@@ -2,18 +2,18 @@
 Kasa, Ciro, Satış ve En Çok Satanlar Raporlama Servisi
 """
 
-import sqlite3
-from datetime import datetime, date
-from typing import Optional, List, Union, Dict, Any
+from datetime import date
 from pathlib import Path
+from typing import Any
+
 from app.db.connection import get_db_connection
 
 
 class RaporServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
-    def gunluk_kasa_ozeti(self, hedef_tarih: Optional[str] = None) -> Dict[str, Any]:
+    def gunluk_kasa_ozeti(self, hedef_tarih: str | None = None) -> dict[str, Any]:
         """
         Belirtilen günün kasa hareketlerini özetler.
         Nakit Satışlar, Kartlı Satışlar, Veresiye Satışlar, Nakit Tahsilatlar, Kartlı Tahsilatlar, Toplam Giriş.
@@ -88,7 +88,7 @@ class RaporServisi:
             "gunluk_toplam_tahsilat_kurus": net_nakit_kasa + net_banka_kart
         }
 
-    def satis_raporu(self, baslangic: str, bitis: str) -> Dict[str, Any]:
+    def satis_raporu(self, baslangic: str, bitis: str) -> dict[str, Any]:
         """Tarih aralığında genel satış ve kâr analizini döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -134,9 +134,9 @@ class RaporServisi:
     def en_cok_satanlar(
         self,
         limit: int = 10,
-        baslangic: Optional[str] = None,
-        bitis: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        baslangic: str | None = None,
+        bitis: str | None = None
+    ) -> list[dict[str, Any]]:
         """En çok satan ürünleri adet ve ciroya göre sıralar."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

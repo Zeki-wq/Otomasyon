@@ -1,0 +1,13 @@
+# Ruff Linter Konfigürasyonu
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # Line too long (managed by layout/qss)
+    "E402",  # Module level import not at top (needed for sys.path)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["F841", "F401"]

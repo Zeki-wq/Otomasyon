@@ -3,11 +3,19 @@ Kullanıcı Girişi ve İlk Çalıştırma Sihirbazı Diyaloğu
 Kayıtlı kullanıcı yoksa otomatik olarak Yönetici Hesabı Oluşturma Sihirbazı açılır.
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QMessageBox, QFrame, QFormLayout
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
+
 from app.services.kimlik_servisi import KimlikServisi
 
 

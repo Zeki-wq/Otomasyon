@@ -2,15 +2,14 @@
 Stok Hareketleri, Envanter ve Kritik Stok Servisi
 """
 
-import sqlite3
-from typing import Optional, List, Union
 from pathlib import Path
-from app.domain.models import StokHareket, Urun
+
 from app.db.connection import get_db_connection
+from app.domain.models import StokHareket, Urun
 
 
 class StokServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
     def stok_duzeltme_yap(
@@ -18,7 +17,7 @@ class StokServisi:
         urun_id: int,
         yeni_stok: int,
         aciklama: str,
-        kullanici_id: Optional[int] = None
+        kullanici_id: int | None = None
     ) -> bool:
         """
         Sayım sonrası veya manuel stok düzeltmesi yapar.
@@ -60,10 +59,10 @@ class StokServisi:
 
     def stok_hareketlerini_getir(
         self,
-        urun_id: Optional[int] = None,
+        urun_id: int | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[StokHareket]:
+    ) -> list[StokHareket]:
         """Stok hareket defterini döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -104,7 +103,7 @@ class StokServisi:
             for r in rows
         ]
 
-    def kritik_stok_urunleri_getir(self) -> List[Urun]:
+    def kritik_stok_urunleri_getir(self) -> list[Urun]:
         """Stoğu kritik seviyenin altında veya eşit olan aktif ürünleri döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

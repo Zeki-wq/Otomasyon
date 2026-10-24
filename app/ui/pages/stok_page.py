@@ -2,11 +2,20 @@
 Stok Hareketleri, Envanter Değeri ve Kritik Stok Uyarı Ekranı
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QFrame, QTabWidget
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from app.domain.money import kurus_to_tl_str
 from app.services.stok_servisi import StokServisi
 from app.services.urun_servisi import UrunServisi

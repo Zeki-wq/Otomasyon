@@ -3,14 +3,16 @@ Excel İçe/Dışa Aktarma (openpyxl) ve Satış Bilgi Fişi PDF Üretimi (repor
 """
 
 from pathlib import Path
-from typing import List, Dict, Any, NamedTuple, Optional
+from typing import Any, NamedTuple
+
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from reportlab.lib.pagesizes import A4
+from openpyxl.styles import Alignment, Font, PatternFill
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from app.domain.models import Urun, Siparis, Musteri
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from app.domain.models import Siparis, Urun
 from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
 from app.services.urun_servisi import UrunServisi
 
@@ -19,11 +21,11 @@ class ExcelImportResult(NamedTuple):
     toplam_satir: int
     eklenen_adet: int
     guncellenen_adet: int
-    hatali_satirlar: List[Dict[str, Any]]
+    hatali_satirlar: list[dict[str, Any]]
     mesaj: str
 
 
-def urunleri_excele_aktar(urunler: List[Urun], dosya_yolu: Path) -> Path:
+def urunleri_excele_aktar(urunler: list[Urun], dosya_yolu: Path) -> Path:
     """Verilen ürün listesini biçimlendirilmiş bir Excel (.xlsx) dosyasına aktarır."""
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -222,7 +224,7 @@ def urunleri_excelden_ice_aktar(dosya_yolu: Path, urun_servisi: UrunServisi) -> 
 def satis_fisi_pdf_olustur(
     siparis: Siparis,
     dosya_yolu: Path,
-    dukkan_bilgisi: Optional[Dict[str, str]] = None
+    dukkan_bilgisi: dict[str, str] | None = None
 ) -> Path:
     """
     Satış siparişi için şık bir A4/Termal Bilgi Fişi PDF dosyası üretir.

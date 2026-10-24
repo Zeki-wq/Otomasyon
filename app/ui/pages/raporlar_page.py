@@ -4,16 +4,29 @@ Kasa, Ciro, Satış Analizi, En Çok Satanlar ve Excel Veri Ekranı
 
 from datetime import date
 from pathlib import Path
-from PyQt5 import QtCore, QtGui, QtWidgets
+
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QFrame, QTabWidget, QDateEdit, QFileDialog, QProgressBar
+    QDateEdit,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from app.domain.money import kurus_to_tl_str
 from app.services.rapor_servisi import RaporServisi
 from app.services.urun_servisi import UrunServisi
-from app.utils.export import urunleri_excele_aktar, urunleri_excelden_ice_aktar
+from app.utils.export import urunleri_excelden_ice_aktar, urunleri_excele_aktar
 
 
 class RaporlarPage(QWidget):
@@ -304,7 +317,7 @@ class RaporlarPage(QWidget):
 
             detay_mesaj = sonuc.mesaj
             if sonuc.hatali_satirlar:
-                detay_mesaj += f"\n\nAtlanan Hatalı Satırlar (İlk 5):"
+                detay_mesaj += "\n\nAtlanan Hatalı Satırlar (İlk 5):"
                 for h in sonuc.hatali_satirlar[:5]:
                     detay_mesaj += f"\n- Satır {h['satir']} ({h['kod']}): {h['hata']}"
 

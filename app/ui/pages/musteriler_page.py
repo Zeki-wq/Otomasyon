@@ -4,10 +4,24 @@ Müşteri (Cari Hesap), Tahsilat ve Hesap Ekstresi Ekranı
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QDialog,
-    QFormLayout, QFrame, QRadioButton, QButtonGroup, QTextEdit
+    QButtonGroup,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
+
 from app.domain.models import Musteri
 from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
 from app.services.musteri_servisi import MusteriServisi

@@ -2,16 +2,30 @@
 Sistem Ayarları, Yedekleme, Veritabanı Sağlığı ve Kullanıcı Yönetim Ekranı
 """
 
-from pathlib import Path
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QDialog,
-    QFormLayout, QFrame, QTabWidget, QSpinBox, QFileDialog, QComboBox
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from app.db.connection import get_db_connection, check_db_health
-from app.services.yedek_servisi import YedekServisi
+
+from app.db.connection import check_db_health, get_db_connection
 from app.services.kimlik_servisi import KimlikServisi
+from app.services.yedek_servisi import YedekServisi
 
 
 class AyarlarPage(QWidget):

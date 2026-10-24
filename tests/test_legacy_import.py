@@ -3,11 +3,10 @@ Eski Veritabanı (legacy/urunler12.db) Kayıpsız Taşıma Testleri
 Faz 1 Kapısı: 2 ürün ve 17 sipariş eksiksiz taşınır, mükerrer oluşmaz.
 """
 
-import sqlite3
-import pytest
 from pathlib import Path
-from app.db.legacy_import import import_legacy_database
+
 from app.db.connection import get_db_connection
+from app.db.legacy_import import import_legacy_database
 
 
 def test_legacy_database_migration_zero_data_loss(tmp_path):

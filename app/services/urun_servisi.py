@@ -3,17 +3,17 @@
 """
 
 import sqlite3
-from typing import Optional, List, Union
 from pathlib import Path
-from app.domain.models import Urun, Kategori, Marka
+
 from app.db.connection import get_db_connection
+from app.domain.models import Kategori, Marka, Urun
 
 
 class UrunServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
-    def urun_ekle(self, urun: Urun, kullanici_id: Optional[int] = None) -> int:
+    def urun_ekle(self, urun: Urun, kullanici_id: int | None = None) -> int:
         """Yeni ürün ekler ve başlangıç stoğu varsa stok hareketi oluşturur."""
         parca_kodu = str(urun.parca_kodu or "").strip().upper()
         ad = str(urun.ad or "").strip()
@@ -71,7 +71,7 @@ class UrunServisi:
                 raise ValueError(f"'{parca_kodu}' parça kodu zaten mevcut!") from e
             raise ValueError(f"Ürün eklenemedi: {e}") from e
 
-    def urun_guncelle(self, urun: Urun, kullanici_id: Optional[int] = None) -> bool:
+    def urun_guncelle(self, urun: Urun, kullanici_id: int | None = None) -> bool:
         """Ürün bilgilerini günceller (stok doğrudan buradan güncellenmez, stok_servisi ile düzeltilir)."""
         if not urun.id:
             raise ValueError("Güncellenecek ürünün ID'si belirtilmelidir.")
@@ -134,7 +134,7 @@ class UrunServisi:
         conn.close()
         return True
 
-    def urun_getir(self, urun_id: int) -> Optional[Urun]:
+    def urun_getir(self, urun_id: int) -> Urun | None:
         """ID ile tek ürün getirir."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -149,7 +149,7 @@ class UrunServisi:
         conn.close()
         return self._satiri_urune_cevir(row) if row else None
 
-    def urun_getir_parca_kodu(self, parca_kodu: str) -> Optional[Urun]:
+    def urun_getir_parca_kodu(self, parca_kodu: str) -> Urun | None:
         """Parça kodu ile ürün arar."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -164,7 +164,7 @@ class UrunServisi:
         conn.close()
         return self._satiri_urune_cevir(row) if row else None
 
-    def urun_getir_barkod(self, barkod: str) -> Optional[Urun]:
+    def urun_getir_barkod(self, barkod: str) -> Urun | None:
         """Barkod ile ürün arar."""
         if not barkod:
             return None
@@ -184,12 +184,12 @@ class UrunServisi:
     def urun_ara(
         self,
         terim: str = "",
-        kategori_id: Optional[int] = None,
-        marka_id: Optional[int] = None,
+        kategori_id: int | None = None,
+        marka_id: int | None = None,
         sadece_aktif: bool = True,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Urun]:
+    ) -> list[Urun]:
         """
         Kısmi arama (parça kodu, barkod, OEM no, ad, marka adı) yürütür.
         50.000 üründe < 100 ms indeksli hızlı sorgu.
@@ -237,8 +237,8 @@ class UrunServisi:
     def toplam_urun_sayisi(
         self,
         terim: str = "",
-        kategori_id: Optional[int] = None,
-        marka_id: Optional[int] = None,
+        kategori_id: int | None = None,
+        marka_id: int | None = None,
         sadece_aktif: bool = True
     ) -> int:
         """Filtrelere uyan toplam ürün sayısını döner (sayfalama için)."""
@@ -273,7 +273,7 @@ class UrunServisi:
         conn.close()
         return sayi
 
-    def kategorileri_getir(self) -> List[Kategori]:
+    def kategorileri_getir(self) -> list[Kategori]:
         """Tüm kategorileri sıralı döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -282,7 +282,7 @@ class UrunServisi:
         conn.close()
         return [Kategori(id=r["id"], ad=r["ad"]) for r in rows]
 
-    def markalari_getir(self) -> List[Marka]:
+    def markalari_getir(self) -> list[Marka]:
         """Tüm markaları sıralı döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

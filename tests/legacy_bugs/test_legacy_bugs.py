@@ -4,10 +4,10 @@ Bu testler, legacy (eski) sistemdeki hatalı varsayımların ve şemanın gerçe
 hayat senaryolarında nasıl patladığını kanıtlar.
 """
 
-import sqlite3
 import shutil
-import tempfile
+import sqlite3
 from pathlib import Path
+
 import pytest
 
 
@@ -96,8 +96,9 @@ def test_b3_tablo_30_satir_siniri_ve_sutun_uyusmazligi():
 
     # QTableWidget davranışını doğrula: rowCount 30 iken 31. satıra setItem yapmak
     # satır sayısını artırmaz ve item'ı eklemez (sessizce yutar/gözükmez):
-    from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QApplication
     import sys
+
+    from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
 
     app = QApplication.instance() or QApplication(sys.argv)
     table = QTableWidget()
@@ -152,7 +153,7 @@ def test_b6_kayit_guncelle_turkce_karakter_sql_ve_silme_index_error(legacy_db):
 
     # pyton1.py içindeki hatalı güncelleme SQL'i:
     hatali_sql = "update urun set urunAdi = ?, birimFiyat = ?, stokMiktari = ?, urunAciklaması = ?, marka = ?, kategori = ? where urunKodu = ?"
-    
+
     with pytest.raises(sqlite3.OperationalError) as exc_info:
         cursor.execute(hatali_sql, ("Test", 10, 5, "Aciklama", "Marka", "Kategori", 4))
     conn.close()

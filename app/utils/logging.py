@@ -3,9 +3,10 @@ Loglama ve Yakalanmamış Hata Yönetimi
 """
 
 import logging
-from logging.handlers import RotatingFileHandler
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
 from app.config import LOG_DIR, ensure_app_dirs
 
 logger = logging.getLogger("otoyedekparca")

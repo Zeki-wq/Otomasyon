@@ -3,14 +3,15 @@ Müşteri / Cari Hesap ve Tahsilat Servisi
 """
 
 import sqlite3
-from typing import Optional, List, Union, Dict, Any
 from pathlib import Path
-from app.domain.models import Musteri, Tahsilat
+from typing import Any
+
 from app.db.connection import get_db_connection
+from app.domain.models import Musteri
 
 
 class MusteriServisi:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
     def musteri_ekle(self, musteri: Musteri) -> int:
@@ -78,7 +79,7 @@ class MusteriServisi:
         conn.close()
         return True
 
-    def musteri_getir(self, musteri_id: int) -> Optional[Musteri]:
+    def musteri_getir(self, musteri_id: int) -> Musteri | None:
         """ID ile tek müşteri döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -87,7 +88,7 @@ class MusteriServisi:
         conn.close()
         return self._satiri_musteriye_cevir(row) if row else None
 
-    def musterileri_getir(self, arama_metni: str = "", sadece_aktif: bool = True) -> List[Musteri]:
+    def musterileri_getir(self, arama_metni: str = "", sadece_aktif: bool = True) -> list[Musteri]:
         """Arama ve filtreleme ile müşteri listesini döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()
@@ -118,7 +119,7 @@ class MusteriServisi:
         tutar_kurus: int,
         odeme_tipi: str = "nakit",
         aciklama: str = "",
-        kullanici_id: Optional[int] = None
+        kullanici_id: int | None = None
     ) -> int:
         """
         Müşteriden tahsilat alır ve cari bakiyesinden düşer.
@@ -156,7 +157,7 @@ class MusteriServisi:
             conn.close()
             raise e
 
-    def musteri_ekstresi_getir(self, musteri_id: int) -> List[Dict[str, Any]]:
+    def musteri_ekstresi_getir(self, musteri_id: int) -> list[dict[str, Any]]:
         """Müşterinin veresiye siparişleri ve tahsilatlarını kronolojik ekstre olarak döner."""
         conn = get_db_connection(self.db_path)
         cur = conn.cursor()

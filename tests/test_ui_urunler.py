@@ -4,13 +4,14 @@ Ekran görüntüsü alma (docs/ekran/) ve UI etkileşim testleri.
 """
 
 from pathlib import Path
+
 import pytest
-from PyQt5.QtCore import Qt
+
 from app.db.migrations.migrator import run_migrations
 from app.domain.models import Urun
-from app.services.urun_servisi import UrunServisi
 from app.services.stok_servisi import StokServisi
-from app.ui.pages.urunler_page import UrunlerPage, UrunDiyalog
+from app.services.urun_servisi import UrunServisi
+from app.ui.pages.urunler_page import UrunDiyalog, UrunlerPage
 from app.ui.theme import apply_theme
 
 

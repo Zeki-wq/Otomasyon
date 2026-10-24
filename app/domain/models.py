@@ -3,12 +3,11 @@ Domain Varlık (Entity) Modelleri
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List
 
 
 @dataclass
 class Kullanici:
-    id: Optional[int]
+    id: int | None
     kullanici_adi: str
     parola_hash: str
     parola_salt: str
@@ -19,23 +18,23 @@ class Kullanici:
 
 @dataclass
 class Kategori:
-    id: Optional[int]
+    id: int | None
     ad: str
 
 
 @dataclass
 class Marka:
-    id: Optional[int]
+    id: int | None
     ad: str
 
 
 @dataclass
 class Urun:
-    id: Optional[int]
+    id: int | None
     parca_kodu: str
     ad: str
-    kategori_id: Optional[int] = None
-    marka_id: Optional[int] = None
+    kategori_id: int | None = None
+    marka_id: int | None = None
     barkod: str = ""
     oem_no: str = ""
     alis_fiyati_kurus: int = 0
@@ -53,7 +52,7 @@ class Urun:
 
 @dataclass
 class Musteri:
-    id: Optional[int]
+    id: int | None
     ad_soyad: str
     telefon: str = ""
     eposta: str = ""
@@ -65,9 +64,9 @@ class Musteri:
 
 @dataclass
 class SiparisKalem:
-    id: Optional[int]
-    siparis_id: Optional[int]
-    urun_id: Optional[int]
+    id: int | None
+    siparis_id: int | None
+    urun_id: int | None
     urun_adi_anlik: str
     parca_kodu_anlik: str
     adet: int
@@ -78,9 +77,9 @@ class SiparisKalem:
 
 @dataclass
 class Siparis:
-    id: Optional[int]
+    id: int | None
     siparis_no: str
-    musteri_id: Optional[int]
+    musteri_id: int | None
     tarih: str
     durum: str = "tamamlandi"  # 'tamamlandi', 'iptal', 'iade'
     odeme_tipi: str = "nakit"  # 'nakit', 'kart', 'veresiye'
@@ -88,23 +87,23 @@ class Siparis:
     kdv_toplam_kurus: int = 0
     genel_toplam_kurus: int = 0
     aciklama: str = ""
-    kullanici_id: Optional[int] = None
+    kullanici_id: int | None = None
     musteri_adi: str = ""
     kullanici_adi: str = ""
-    kalemler: List[SiparisKalem] = field(default_factory=list)
+    kalemler: list[SiparisKalem] = field(default_factory=list)
 
 
 @dataclass
 class StokHareket:
-    id: Optional[int]
+    id: int | None
     urun_id: int
     hareket_tipi: str  # 'giris', 'satis', 'iade', 'iptal', 'sayim_duzeltme'
     adet_degisim: int  # Pozitif veya negatif
     onceki_stok: int
     sonraki_stok: int
     referans_tipi: str = "manuel"  # 'siparis', 'mal_kabul', 'acilis_stogu', 'manuel'
-    referans_id: Optional[int] = None
-    kullanici_id: Optional[int] = None
+    referans_id: int | None = None
+    kullanici_id: int | None = None
     tarih: str = ""
     aciklama: str = ""
     urun_adi: str = ""
@@ -113,13 +112,13 @@ class StokHareket:
 
 @dataclass
 class Tahsilat:
-    id: Optional[int]
+    id: int | None
     musteri_id: int
     tutar_kurus: int
     odeme_tipi: str = "nakit"
     tarih: str = ""
     aciklama: str = ""
-    kullanici_id: Optional[int] = None
+    kullanici_id: int | None = None
     musteri_adi: str = ""
 
 

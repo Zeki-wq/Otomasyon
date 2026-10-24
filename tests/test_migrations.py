@@ -3,8 +3,10 @@ Veritabanı Şeması ve Migrasyon Testleri
 """
 
 import sqlite3
+
 import pytest
-from app.db.connection import get_db_connection, check_db_health
+
+from app.db.connection import check_db_health, get_db_connection
 from app.db.migrations.migrator import run_migrations
 
 
@@ -43,9 +45,8 @@ def test_check_stok_non_negative_constraint(tmp_path):
     cur = conn.cursor()
 
     # Negatif stoklu ürün eklemeye çalış
-    with pytest.raises(sqlite3.IntegrityError):
-        with conn:
-            cur.execute("""
+    with pytest.raises(sqlite3.IntegrityError), conn:
+        cur.execute("""
                 INSERT INTO urun (parca_kodu, ad, stok, satis_fiyati_kurus)
                 VALUES ('TEST-001', 'Test Parça', -5, 1000)
             """)

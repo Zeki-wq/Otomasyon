@@ -15,12 +15,12 @@
 - [x] Servis testleri: Atomiklik, kuruş/KDV yuvarlama, göç doğrulama testleri (22/22 test geçti).
 - [x] Faz 1 git commit tamamlandı.
 
-## [ ] Faz 2: Ürünler ve Hızlı Arama
-- [ ] Merkezi modern koyu tema: `app/ui/theme.py`.
-- [ ] Ürün listesi ve yönetim ekranı: `app/ui/pages/urunler_page.py`.
-- [ ] Girdi doğrulama ve pasife alma (soft-delete).
-- [ ] 20.000 sanal ürünle performans ve anlık arama testi (< 100 ms).
-- [ ] Faz 2 Walkthrough oluşturulup git commit atılacak.
+## [x] Faz 2: Ürünler ve Hızlı Arama
+- [x] Merkezi modern koyu tema: `app/ui/theme.py`.
+- [x] Ürün listesi ve yönetim ekranı: `app/ui/pages/urunler_page.py`.
+- [x] Girdi doğrulama ve pasife alma (soft-delete).
+- [x] 20.000 sanal ürünle performans ve anlık arama testi (< 100 ms).
+- [x] Faz 2 git commit tamamlandı.
 
 ## [ ] Faz 3: Satış, Sepet ve Stok Yönetimi
 - [ ] Çok kalemli sepet ve hızlı satış ekranı: `app/ui/pages/satis_page.py`.

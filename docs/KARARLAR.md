@@ -94,11 +94,21 @@ Bu belge, Oto Yedek Parça Otomasyonu projesinde alınan teknik, mimari ve iş a
 - **Ürün Arama Filtresi:** Sipariş listesinde siparişin herhangi bir kaleminde geçen parça kodu veya ürün adına göre filtreleme (`EXISTS`) eklenmiştir.
 - **Detaydan İade/İptal:** Çift tıklanan siparişin detay penceresinde tüm kalemler (adet, birim fiyat, satır toplamı, KDV) listelenir ve yönetici yetkisiyle doğrudan pencereden sipariş iptal edilip stoklar geri iade edilebilir.
 
-### K12: Müşteri TC Kimlik No, Telefon Doğrulaması ve KVKK
-- **TCKN Algoritma Doğrulaması:** 11 haneli TCKN için resmi algoritma kuralları (`d10 = ((sum(tek)*7 - sum(cift)) % 10 + 10) % 10`, `d11 = sum(d1..d10) % 10`) uygulanır. İlk hane 0 olamaz. Boş bırakılmasına izin verilir (müşteri vermek istemeyebilir).
-- **Telefon Normalizasyonu:** Türkiye sabit ve mobil numaraları (+90, 90, 05XX, 02XX, vb.) standart 11 haneli `05XXXXXXXXX` biçimine normalize edilir.
-- **Katmanlı Doğrulama:** Doğrulama kuralları hem arayüzde dinamik hata etiketiyle anlık gösterilir hem de `musteri_servisi` ve `validators.py` içinde zorunlu kılınarak içe aktarma ve servis çağrılarında da veri bütünlüğü korunur.
-- **KVKK Maskeleme:** Müşteri listesinde ve personel ekranlarında TCKN maskeli (`100******46`) gösterilir; tam TCKN yalnızca yönetici rolüne düzenleme modunda sunulur.
-- **Mevcut Verinin Korunması:** Hatalı/eski kayıtlar silinmez, tabloda `(Geçersiz TC)` uyarı rozetiyle dükkan sahibine bildirilir.
+### K13: Müşteri & Ürün Formlarında Anlık Görsel Hata Geri Bildirimi ve Diyalog Güvencesi
+- **Arayüz Seviyesi Kilit:** Geçersiz veri girildiğinde (ör. '515', 'asd', '1782', 1 karakterlik isim) diyalog kesinlikle kapatılmaz veya onaylanmaz (`accept()` çağrılmaz).
+- **Görsel Vurgu ve Odak:** Hatalı alanların kenarlığı kırmızı (`border: 1.5px solid #ff4757; background-color: #2d1f24;`) olur, hemen altında Türkçe `⚠️` uyarı mesajı gösterilir ve klavye odağı ilk hatalı alana çekilir.
+- **Mevcut Hatalı Kayıtlar ve Filtre:** Veritabanında daha önceden kalmış bozuk kayıtlar silinmez veya bozulmaz; tabloda `⚠️ Hatalı Bilgi` rozeti ve detaylı hata araç ipucu (tooltip) ile listelenir. Tabloya eklenen "Hatalı Kayıtlar" filtresi ile dükkan sahibi bu kayıtları izole edip düzenleyerek düzeltebilir.
+
+### K14: Tablolarda WCAG Koyu Alternatif Satırlar ve Köşe Butonu Standardı
+- **Kök Neden:** `setAlternatingRowColors(True)` açık olmasına rağmen `alternate-background-color` tanımlanmadığında Qt varsayılan Windows pencere rengi olan beyazı (`#ffffff`) kullanır; beyaz metin bu zemin üzerinde tamamen görünmez hale gelir.
+- **Merkezi Çözüm (`theme.py`):**
+  - Tüm tablolar için `background-color: #1e222a;` ve `alternate-background-color: #252b35;` atanmıştır.
+  - Seçim (`#0984e3`), hover (`#2e3644`), dikey başlık (`#181b21`), köşe butonu (`QTableCornerButton::section`) ve viewport arka planı koyu tema ile homojenleştirilmiştir.
+  - WCAG 2.1 kontrast oranı her satırda `>= 4.5:1` olarak testlerle garanti altına alınmıştır.
+
+### K15: Tablo Satır Sayısı ve Hayalet Satır Engelleme Politikası
+- **Kök Neden:** Ürün ekleme servisinin pasif ürünlerde `aktif` parametresini yok sayıp sabit `1` yazması veya tabloların yenilenirken eski satır sayısını koruması veri uyuşmazlığına yol açıyordu. Ayrıca alternatif satır beyazlığı metinleri gizleyerek satırı boş/hayalet gibi gösteriyordu.
+- **Çözüm:** `urun_ekle` modeldeki `aktif` değerine tam uyar. Her tablo yenilemesinde `tablo.setRowCount(0)` ile sıfırdan ve tam `len(veriler)` kadar satır eklenir. Hiç sonuç bulunamadığında tablo temizlenir ve kullanıcıya turuncu "🔍 Arama kriterlerine uygun sonuç bulunamadı." uyarısı gösterilir.
+
 
 

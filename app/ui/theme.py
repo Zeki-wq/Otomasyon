@@ -196,12 +196,13 @@ QPushButton#btnSecondary:hover {
 
 /* Tablolar (QTableWidget & QTableView) */
 QTableWidget, QTableView {
-    background-color: #262b33;
+    background-color: #1e222a;
+    alternate-background-color: #252b35;
     border: 1px solid #333945;
     border-radius: 8px;
     gridline-color: #2f3640;
     color: #f5f6fa;
-    selection-background-color: #00a8ff;
+    selection-background-color: #0984e3;
     selection-color: #ffffff;
     outline: none;
 }
@@ -209,6 +210,11 @@ QTableWidget, QTableView {
 QTableWidget::item, QTableView::item {
     padding: 8px;
     border-bottom: 1px solid #2d333e;
+    color: #f5f6fa;
+}
+
+QTableWidget::item:hover, QTableView::item:hover {
+    background-color: #2e3644;
 }
 
 QTableWidget::item:selected, QTableView::item:selected {
@@ -216,8 +222,13 @@ QTableWidget::item:selected, QTableView::item:selected {
     color: #ffffff;
 }
 
+QHeaderView {
+    background-color: #181b21;
+    border: none;
+}
+
 QHeaderView::section {
-    background-color: #1f232a;
+    background-color: #181b21;
     color: #00a8ff;
     padding: 6px 8px;
     font-weight: bold;
@@ -227,6 +238,33 @@ QHeaderView::section {
     border: none;
     border-right: 1px solid #2d333e;
     border-bottom: 2px solid #00a8ff;
+}
+
+QHeaderView::section:vertical {
+    background-color: #181b21;
+    color: #718093;
+    padding: 4px 6px;
+    border: none;
+    border-bottom: 1px solid #262b33;
+    border-right: 1px solid #2d333e;
+    font-size: 9pt;
+}
+
+QTableCornerButton::section {
+    background-color: #181b21;
+    border: none;
+    border-right: 1px solid #2d333e;
+    border-bottom: 2px solid #00a8ff;
+}
+
+QTableWidget QWidget, QTableView QWidget {
+    background-color: #1e222a;
+}
+
+/* Hata Vurgusu */
+.input-error {
+    border: 1.5px solid #ff4757 !important;
+    background-color: #2d1f24 !important;
 }
 
 /* Kaydırma Çubuğu (QScrollBar) */

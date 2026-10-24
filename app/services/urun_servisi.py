@@ -36,7 +36,7 @@ class UrunServisi:
                         parca_kodu, barkod, oem_no, ad, kategori_id, marka_id,
                         alis_fiyati_kurus, satis_fiyati_kurus, kdv_orani,
                         stok, kritik_stok, raf_yeri, aciklama, aktif
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     parca_kodu,
                     str(urun.barkod or "").strip(),
@@ -50,7 +50,8 @@ class UrunServisi:
                     urun.stok,
                     urun.kritik_stok,
                     str(urun.raf_yeri or "").strip(),
-                    str(urun.aciklama or "").strip()
+                    str(urun.aciklama or "").strip(),
+                    0 if urun.aktif == 0 else 1
                 ))
                 yeni_id = cur.lastrowid
 

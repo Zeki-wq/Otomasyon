@@ -5,6 +5,7 @@ Müşteri (Cari Hesap), Tahsilat ve Hesap Ekstresi Ekranı
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
     QButtonGroup,
+    QComboBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -25,10 +26,13 @@ from PyQt5.QtWidgets import (
 from app.domain.models import Musteri
 from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
 from app.domain.validators import (
-    tc_kimlik_dogrula,
+    ValidationError,
+    eposta_dogrula,
+    musteri_gecerli_mi,
     tc_maskele,
+    telefon_dogrula_ve_normalize,
     telefon_formatla,
-    vergi_no_dogrula,
+    vergi_veya_tc_dogrula,
 )
 from app.services.musteri_servisi import MusteriServisi
 
@@ -43,8 +47,8 @@ class MusteriDiyalog(QDialog):
         self.aktif_kullanici = aktif_kullanici
         self.setWindowTitle("Müşteri Düzenle" if musteri else "Yeni Müşteri Ekle")
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumSize(500, 560)
-        self.resize(520, 570)
+        self.setMinimumSize(560, 600)
+        self.resize(580, 620)
         self.init_ui()
 
     def init_ui(self):
@@ -59,23 +63,63 @@ class MusteriDiyalog(QDialog):
         kart.setObjectName("cardFrame")
         form = QFormLayout(kart)
         form.setSpacing(10)
+        form.setLabelAlignment(QtCore.Qt.AlignLeft)
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
+        # Ad Soyad / Ünvan ve Hata Etiketi
+        lbl_ad = QLabel("Ad Soyad / Ünvan (*):")
+        lbl_ad.setMinimumWidth(140)
+        ad_kutu = QVBoxLayout()
         self.txt_ad = QLineEdit()
         self.txt_ad.setPlaceholderText("Örn: Mehmet Usta / Örnek Oto Servis")
-        form.addRow("Ad Soyad / Ünvan (*):", self.txt_ad)
+        self.txt_ad.textChanged.connect(lambda: self._hata_temizle(self.txt_ad, self.lbl_ad_hata))
+        ad_kutu.addWidget(self.txt_ad)
 
+        self.lbl_ad_hata = QLabel("")
+        self.lbl_ad_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_ad_hata.setWordWrap(True)
+        self.lbl_ad_hata.hide()
+        ad_kutu.addWidget(self.lbl_ad_hata)
+        form.addRow(lbl_ad, ad_kutu)
+
+        # Telefon ve Hata Etiketi
+        lbl_tel = QLabel("Telefon Numarası:")
+        lbl_tel.setMinimumWidth(140)
+        tel_kutu = QVBoxLayout()
         self.txt_tel = QLineEdit()
-        self.txt_tel.setPlaceholderText("Örn: 0532 123 4567")
-        regex_tel = QtCore.QRegularExpression(r"^[\d\s\+\-\(\)]{0,20}$")
+        self.txt_tel.setPlaceholderText("Örn: 0532 123 45 67")
+        regex_tel = QtCore.QRegularExpression(r"^[\d\s\+\-\(\)]{0,17}$")
         self.txt_tel.setValidator(QtGui.QRegularExpressionValidator(regex_tel, self.txt_tel))
-        self.txt_tel.setMaxLength(20)
-        form.addRow("Telefon Numarası:", self.txt_tel)
+        self.txt_tel.setMaxLength(17)
+        self.txt_tel.textChanged.connect(lambda: self._hata_temizle(self.txt_tel, self.lbl_tel_hata))
+        tel_kutu.addWidget(self.txt_tel)
 
+        self.lbl_tel_hata = QLabel("")
+        self.lbl_tel_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_tel_hata.setWordWrap(True)
+        self.lbl_tel_hata.hide()
+        tel_kutu.addWidget(self.lbl_tel_hata)
+        form.addRow(lbl_tel, tel_kutu)
+
+        # E-Posta ve Hata Etiketi
+        lbl_eposta = QLabel("E-Posta Adresi:")
+        lbl_eposta.setMinimumWidth(140)
+        eposta_kutu = QVBoxLayout()
         self.txt_eposta = QLineEdit()
         self.txt_eposta.setPlaceholderText("Örn: info@ornekservis.com")
-        form.addRow("E-Posta Adresi:", self.txt_eposta)
+        self.txt_eposta.textChanged.connect(lambda: self._hata_temizle(self.txt_eposta, self.lbl_eposta_hata))
+        eposta_kutu.addWidget(self.txt_eposta)
+
+        self.lbl_eposta_hata = QLabel("")
+        self.lbl_eposta_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_eposta_hata.setWordWrap(True)
+        self.lbl_eposta_hata.hide()
+        eposta_kutu.addWidget(self.lbl_eposta_hata)
+        form.addRow(lbl_eposta, eposta_kutu)
 
         # TC / Vergi No ve Hata Etiketi
+        lbl_vergi = QLabel("Vergi No / TCKN:")
+        lbl_vergi.setMinimumWidth(140)
         vergi_kutu = QVBoxLayout()
         self.txt_vergi = QLineEdit()
         self.txt_vergi.setPlaceholderText("TC Kimlik (11 hane) veya Vergi No (10 hane)")
@@ -87,15 +131,17 @@ class MusteriDiyalog(QDialog):
 
         self.lbl_vergi_hata = QLabel("")
         self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        self.lbl_vergi_hata.setWordWrap(True)
         self.lbl_vergi_hata.hide()
         vergi_kutu.addWidget(self.lbl_vergi_hata)
+        form.addRow(lbl_vergi, vergi_kutu)
 
-        form.addRow("Vergi No / TCKN:", vergi_kutu)
-
+        lbl_adres = QLabel("Adres:")
+        lbl_adres.setMinimumWidth(140)
         self.txt_adres = QTextEdit()
         self.txt_adres.setMinimumHeight(65)
         self.txt_adres.setPlaceholderText("Açık adres...")
-        form.addRow("Adres:", self.txt_adres)
+        form.addRow(lbl_adres, self.txt_adres)
 
         layout.addWidget(kart)
 
@@ -129,62 +175,107 @@ class MusteriDiyalog(QDialog):
 
             self.txt_adres.setPlainText(self.musteri.adres)
 
+            # Mevcut geçersiz veriler varsa formu açınca hataları göster
+            gecerli, hatalar = musteri_gecerli_mi(self.musteri)
+            if not gecerli:
+                self.lbl_vergi_hata.setText("⚠️ Mevcut kayıt hatalı bilgi içeriyor. Lütfen düzelterek kaydediniz.")
+                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
+                self.lbl_vergi_hata.show()
+
+    def _hata_ayarla(self, widget: QWidget, label: QLabel, mesaj: str):
+        widget.setStyleSheet("border: 1.5px solid #ff4757; background-color: #2d1f24;")
+        label.setText(f"⚠️ {mesaj}")
+        label.setStyleSheet("font-size: 8pt; color: #ff4757;")
+        label.show()
+
+    def _hata_temizle(self, widget: QWidget, label: QLabel):
+        widget.setStyleSheet("")
+        label.setText("")
+        label.hide()
+
     def _vergi_degisti(self, metin: str):
         v = metin.strip()
         if not v:
-            self.lbl_vergi_hata.hide()
+            self._hata_temizle(self.txt_vergi, self.lbl_vergi_hata)
             return
 
-        if len(v) == 11:
-            if tc_kimlik_dogrula(v):
+        gecerli, aciklama = vergi_veya_tc_dogrula(v)
+        if not gecerli:
+            self._hata_ayarla(self.txt_vergi, self.lbl_vergi_hata, aciklama)
+        else:
+            self.txt_vergi.setStyleSheet("")
+            if aciklama == "tc":
                 self.lbl_vergi_hata.setText("✅ Geçerli TC Kimlik Numarası")
                 self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #2ecc71;")
                 self.lbl_vergi_hata.show()
-            else:
-                self.lbl_vergi_hata.setText("⚠️ TC Kimlik No 11 haneli ve geçerli olmalıdır")
-                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
-                self.lbl_vergi_hata.show()
-        elif len(v) == 10:
-            if vergi_no_dogrula(v):
+            elif aciklama == "vergi":
                 self.lbl_vergi_hata.setText("ℹ️ Geçerli 10 Haneli Vergi Numarası")
                 self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #3498db;")
                 self.lbl_vergi_hata.show()
-            else:
-                self.lbl_vergi_hata.setText("⚠️ Vergi Numarası 10 haneli rakam olmalıdır")
-                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
-                self.lbl_vergi_hata.show()
-        else:
-            self.lbl_vergi_hata.setText("ℹ️ TC (11 hane) veya Vergi No (10 hane)")
-            self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #a4b0be;")
-            self.lbl_vergi_hata.show()
 
     def kaydet(self):
-        ad = self.txt_ad.text().strip()
-        if not ad:
-            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen müşteri adı veya firma ünvanını giriniz.")
-            self.txt_ad.setFocus()
-            return
+        ilk_hatali = None
 
+        # 1. Ad Soyad Kontrolü
+        ad = self.txt_ad.text().strip()
+        if not ad or len(ad) < 2:
+            self._hata_ayarla(self.txt_ad, self.lbl_ad_hata, "Müşteri adı veya firma ünvanı en az 2 karakter olmalıdır!")
+            if not ilk_hatali:
+                ilk_hatali = self.txt_ad
+        else:
+            self._hata_temizle(self.txt_ad, self.lbl_ad_hata)
+
+        # 2. Telefon Kontrolü
+        tel = self.txt_tel.text().strip()
+        if tel:
+            try:
+                telefon_dogrula_ve_normalize(tel)
+                self._hata_temizle(self.txt_tel, self.lbl_tel_hata)
+            except ValidationError as e:
+                self._hata_ayarla(self.txt_tel, self.lbl_tel_hata, str(e))
+                if not ilk_hatali:
+                    ilk_hatali = self.txt_tel
+        else:
+            self._hata_temizle(self.txt_tel, self.lbl_tel_hata)
+
+        # 3. E-Posta Kontrolü
+        eposta = self.txt_eposta.text().strip()
+        if eposta:
+            if not eposta_dogrula(eposta):
+                self._hata_ayarla(self.txt_eposta, self.lbl_eposta_hata, "Geçersiz e-posta formatı (örn: info@firma.com)!")
+                if not ilk_hatali:
+                    ilk_hatali = self.txt_eposta
+            else:
+                self._hata_temizle(self.txt_eposta, self.lbl_eposta_hata)
+        else:
+            self._hata_temizle(self.txt_eposta, self.lbl_eposta_hata)
+
+        # 4. Vergi / TC No Kontrolü
         vergi_tc = self.txt_vergi.text().strip()
-        # Eğer maskeli ise ve değiştirilmediyse orijinalini koru
         if self.musteri and vergi_tc == tc_maskele(self.musteri.vergi_no_tc):
             vergi_tc = self.musteri.vergi_no_tc
 
-        # Arayüz seviyesi TC doğrulaması ve Türkçe mesaj
         if vergi_tc:
-            if len(vergi_tc) == 11 and not tc_kimlik_dogrula(vergi_tc):
-                self.lbl_vergi_hata.setText("⚠️ TC Kimlik No 11 haneli ve geçerli olmalıdır")
-                self.lbl_vergi_hata.setStyleSheet("font-size: 8pt; color: #ff4757;")
-                self.lbl_vergi_hata.show()
-                QMessageBox.warning(self, "Geçersiz TCKN", "TC Kimlik No 11 haneli ve geçerli olmalıdır!")
-                self.txt_vergi.setFocus()
-                return
+            gecerli, aciklama = vergi_veya_tc_dogrula(vergi_tc)
+            if not gecerli:
+                self._hata_ayarla(self.txt_vergi, self.lbl_vergi_hata, aciklama)
+                if not ilk_hatali:
+                    ilk_hatali = self.txt_vergi
+            else:
+                self._hata_temizle(self.txt_vergi, self.lbl_vergi_hata)
+        else:
+            self._hata_temizle(self.txt_vergi, self.lbl_vergi_hata)
+
+        # Hata varsa kaydı durdur ve ilk hatalı alana odaklan
+        if ilk_hatali:
+            ilk_hatali.setFocus()
+            return
 
         try:
             if self.musteri:
                 self.musteri.ad_soyad = ad
-                self.musteri.telefon = self.txt_tel.text().strip()
-                self.musteri.eposta = self.txt_eposta.text().strip()
+                self.musteri.telefon = tel
+                self.musteri.eposta = eposta
                 self.musteri.vergi_no_tc = vergi_tc
                 self.musteri.adres = self.txt_adres.toPlainText().strip()
                 self.musteri_servisi.musteri_guncelle(self.musteri)
@@ -193,8 +284,8 @@ class MusteriDiyalog(QDialog):
                 yeni = Musteri(
                     id=None,
                     ad_soyad=ad,
-                    telefon=self.txt_tel.text().strip(),
-                    eposta=self.txt_eposta.text().strip(),
+                    telefon=tel,
+                    eposta=eposta,
                     vergi_no_tc=vergi_tc,
                     adres=self.txt_adres.toPlainText().strip()
                 )
@@ -202,6 +293,8 @@ class MusteriDiyalog(QDialog):
                 QMessageBox.information(self, "Başarılı", f"'{ad}' cari hesabı açıldı.")
 
             self.accept()
+        except ValidationError as ve:
+            QMessageBox.warning(self, "Doğrulama Hatası", str(ve))
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
 
@@ -399,7 +492,7 @@ class MusterilerPage(QWidget):
 
         ana_layout.addLayout(ust_bar)
 
-        # Arama Barı
+        # Arama ve Filtre Barı
         filtre_kart = QFrame()
         filtre_kart.setObjectName("filterFrame")
         filtre_layout = QHBoxLayout(filtre_kart)
@@ -409,7 +502,14 @@ class MusterilerPage(QWidget):
         self.txt_ara = QLineEdit()
         self.txt_ara.setPlaceholderText("🔍 Müşteri adı, telefon veya vergi/TC no ile ara...")
         self.txt_ara.textChanged.connect(self.listeyi_guncelle)
-        filtre_layout.addWidget(self.txt_ara)
+        filtre_layout.addWidget(self.txt_ara, stretch=3)
+
+        self.cmb_filtre_durum = QComboBox()
+        self.cmb_filtre_durum.addItem("Tüm Müşteriler", "tumu")
+        self.cmb_filtre_durum.addItem("Yalnızca Geçerli Kayıtlar", "gecerli")
+        self.cmb_filtre_durum.addItem("⚠️ Yalnızca Hatalı Kayıtlar", "hatali")
+        self.cmb_filtre_durum.currentIndexChanged.connect(self.listeyi_guncelle)
+        filtre_layout.addWidget(self.cmb_filtre_durum, stretch=1)
 
         ana_layout.addWidget(filtre_kart)
 
@@ -423,9 +523,10 @@ class MusterilerPage(QWidget):
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tablo.setAlternatingRowColors(True)
         self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo.horizontalHeader().setMinimumSectionSize(65)
-        m_widths = [50, 210, 120, 130, 150, 105, 170, 75]
+        m_widths = [50, 210, 120, 130, 150, 105, 170, 85]
         for col, w in enumerate(m_widths):
             self.tablo.setColumnWidth(col, w)
         self.tablo.doubleClicked.connect(self.musteri_duzenle_ac)
@@ -462,9 +563,19 @@ class MusterilerPage(QWidget):
     def listeyi_guncelle(self):
         terim = self.txt_ara.text().strip()
         musteriler = self.musteri_servisi.musterileri_getir(arama_metni=terim)
+        filtre_durum = self.cmb_filtre_durum.currentData() if hasattr(self, "cmb_filtre_durum") else "tumu"
 
         self.tablo.setRowCount(0)
-        for r_idx, m in enumerate(musteriler):
+        for m in musteriler:
+            gecerli, hatalar = musteri_gecerli_mi(m)
+
+            # Filtreye göre ele
+            if filtre_durum == "hatali" and gecerli:
+                continue
+            if filtre_durum == "gecerli" and not gecerli:
+                continue
+
+            r_idx = self.tablo.rowCount()
             self.tablo.insertRow(r_idx)
             self.tablo.setItem(r_idx, 0, QTableWidgetItem(str(m.id)))
             self.tablo.setItem(r_idx, 1, QTableWidgetItem(m.ad_soyad))
@@ -474,10 +585,11 @@ class MusterilerPage(QWidget):
             # KVKK Maskeleme ve Geçersiz TC Rozeti
             tc_str = m.vergi_no_tc or ""
             if tc_str:
-                if len(tc_str) == 11 and not tc_kimlik_dogrula(tc_str):
+                gecerli_tc, _ = vergi_veya_tc_dogrula(tc_str)
+                if not gecerli_tc:
                     tc_item = QTableWidgetItem(f"{tc_maskele(tc_str)} ⚠️ Geçersiz TC")
                     tc_item.setForeground(QtGui.QColor("#ff4757"))
-                    tc_item.setToolTip("TCKN resmi algoritma kontrolünden geçemedi!")
+                    tc_item.setToolTip("TCKN veya Vergi No resmi kontrolden geçemedi!")
                 else:
                     tc_item = QTableWidgetItem(tc_maskele(tc_str))
             else:
@@ -492,9 +604,23 @@ class MusterilerPage(QWidget):
             self.tablo.setItem(r_idx, 5, bakiye_item)
 
             self.tablo.setItem(r_idx, 6, QTableWidgetItem(m.adres))
-            self.tablo.setItem(r_idx, 7, QTableWidgetItem("Aktif" if m.aktif == 1 else "Pasif"))
 
-        self.lbl_sayi.setText(f"Toplam {len(musteriler)} müşteri kayıtlı.")
+            # Durum / Hatalı Bilgi Rozeti
+            if not gecerli:
+                durum_item = QTableWidgetItem("⚠️ Hatalı Bilgi")
+                durum_item.setForeground(QtGui.QColor("#ff4757"))
+                durum_item.setToolTip("Kayıtta hatalı alanlar var:\n" + "\n".join(hatalar) + "\nLütfen düzenleyerek düzeltiniz.")
+            else:
+                durum_item = QTableWidgetItem("✅ Aktif" if m.aktif == 1 else "⛔ Pasif")
+                durum_item.setForeground(QtGui.QColor("#2ecc71" if m.aktif == 1 else "#718093"))
+            self.tablo.setItem(r_idx, 7, durum_item)
+
+        if self.tablo.rowCount() == 0:
+            self.lbl_sayi.setText("🔍 Aradığınız kriterlere uygun müşteri bulunamadı.")
+            self.lbl_sayi.setStyleSheet("color: #ff9f43; font-weight: bold;")
+        else:
+            self.lbl_sayi.setText(f"Toplam {self.tablo.rowCount()} müşteri listeleniyor.")
+            self.lbl_sayi.setStyleSheet("color: #dcdde1;")
 
     def secili_musteri_id(self):
         secili = self.tablo.selectedItems()

@@ -396,6 +396,7 @@ class UrunlerPage(QWidget):
         self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tablo.setAlternatingRowColors(True)
         self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tablo.horizontalHeader().setMinimumSectionSize(60)
         widths = [50, 110, 95, 105, 240, 95, 110, 70, 90, 90, 65, 65, 75]
@@ -555,8 +556,13 @@ class UrunlerPage(QWidget):
         self.btn_sonraki.setEnabled(self.sayfa_no < toplam_sayfa)
 
         # Özet bilgi
-        kritik_sayisi = self.stok_servisi.kritik_stok_sayisi()
-        self.lbl_ozet.setText(f"Toplam: {self.toplam_urun} Ürün  |  ⚠️ Kritik Stok: {kritik_sayisi}")
+        if self.toplam_urun == 0:
+            self.lbl_ozet.setText("🔍 Arama kriterlerine uygun ürün bulunamadı.")
+            self.lbl_ozet.setStyleSheet("color: #ff9f43; font-weight: bold;")
+        else:
+            kritik_sayisi = self.stok_servisi.kritik_stok_sayisi()
+            self.lbl_ozet.setText(f"Toplam: {self.toplam_urun} Ürün  |  ⚠️ Kritik Stok: {kritik_sayisi}")
+            self.lbl_ozet.setStyleSheet("color: #00a8ff; font-weight: bold;")
         self.satir_secildi()
 
     def satir_secildi(self):

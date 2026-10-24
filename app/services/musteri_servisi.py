@@ -9,10 +9,10 @@ from typing import Any
 from app.db.connection import get_db_connection
 from app.domain.models import Musteri
 from app.domain.validators import (
+    ValidationError,
     eposta_dogrula,
-    tc_kimlik_dogrula,
     telefon_dogrula_ve_normalize,
-    vergi_no_dogrula,
+    vergi_veya_tc_dogrula,
 )
 
 
@@ -20,28 +20,23 @@ class MusteriServisi:
     def __init__(self, db_path: Path | str | None = None):
         self.db_path = db_path
 
-    def _bilgileri_dogrula_ve_normalize_et(self, musteri: Musteri) -> tuple[str, str, str, str]:
+    def _bilgileri_dogrula_ve_normalize_et(self, musteri: Musteri) -> tuple[str, str, str, str, str]:
         """İletişim ve kimlik bilgilerini kurallara göre doğrular."""
         ad_soyad = str(musteri.ad_soyad or "").strip()
-        if not ad_soyad:
-            raise ValueError("Müşteri adı soyadı boş bırakılamaz.")
+        if not ad_soyad or len(ad_soyad) < 2:
+            raise ValidationError("Müşteri adı veya firma ünvanı en az 2 karakter olmalıdır.")
 
         tel_norm = telefon_dogrula_ve_normalize(musteri.telefon)
 
         v_tc = str(musteri.vergi_no_tc or "").strip()
         if v_tc:
-            if len(v_tc) == 11:
-                if not tc_kimlik_dogrula(v_tc):
-                    raise ValueError("TC Kimlik Numarası 11 haneli ve resmi algoritmaya uygun olmalıdır!")
-            elif len(v_tc) == 10:
-                if not vergi_no_dogrula(v_tc):
-                    raise ValueError("Vergi Numarası 10 haneli rakam olmalıdır!")
-            else:
-                raise ValueError("TC Kimlik No (11 hane) veya Vergi Numarası (10 hane) geçerli olmalıdır!")
+            gecerli, aciklama = vergi_veya_tc_dogrula(v_tc)
+            if not gecerli:
+                raise ValidationError(aciklama)
 
         eposta = str(musteri.eposta or "").strip()
         if eposta and not eposta_dogrula(eposta):
-            raise ValueError("Geçersiz e-posta adresi biçimi!")
+            raise ValidationError("Geçersiz e-posta adresi formatı!")
 
         adres = str(musteri.adres or "").strip()
         return ad_soyad, tel_norm, eposta, v_tc, adres

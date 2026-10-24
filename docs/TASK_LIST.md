@@ -7,13 +7,13 @@
 - [ ] Bölüm 3'teki B1-B8 hatalarını yakalayan başarısız testler (`tests/legacy_bugs/test_legacy_bugs.py`) yazılacak ve çalıştırılacak.
 - [ ] Faz 0 Walkthrough oluşturulup git commit atılacak.
 
-## [ ] Faz 1: Temel Mimari, Servisler ve Veri Göçü
-- [ ] Dizin iskeleti: `app/config.py`, `app/utils/logging.py`, `app/domain/money.py`.
-- [ ] Veritabanı motoru: `app/db/connection.py`, `app/db/migrations/0001_initial.sql`, migrasyon çalıştırıcı.
-- [ ] Orijinal veri göçü: `app/db/legacy_import.py` (2 ürün, 17 sipariş kayıpsız aktarım).
-- [ ] Servis katmanı: `urun_servisi.py`, `satis_servisi.py`, `stok_servisi.py`, `musteri_servisi.py`, `kimlik_servisi.py`, `yedek_servisi.py`.
-- [ ] Servis testleri: Atomiklik, kuruş/KDV yuvarlama, göç doğrulama testleri.
-- [ ] Faz 1 Walkthrough oluşturulup git commit atılacak.
+## [x] Faz 1: Temel Mimari, Servisler ve Veri Göçü
+- [x] Dizin iskeleti: `app/config.py`, `app/utils/logging.py`, `app/domain/money.py`.
+- [x] Veritabanı motoru: `app/db/connection.py`, `app/db/migrations/0001_initial.sql`, migrasyon çalıştırıcı.
+- [x] Orijinal veri göçü: `app/db/legacy_import.py` (2 ürün, 17 sipariş kayıpsız aktarım).
+- [x] Servis katmanı: `urun_servisi.py`, `satis_servisi.py`, `stok_servisi.py`, `musteri_servisi.py`, `kimlik_servisi.py`, `yedek_servisi.py`, `rapor_servisi.py`.
+- [x] Servis testleri: Atomiklik, kuruş/KDV yuvarlama, göç doğrulama testleri (22/22 test geçti).
+- [x] Faz 1 git commit tamamlandı.
 
 ## [ ] Faz 2: Ürünler ve Hızlı Arama
 - [ ] Merkezi modern koyu tema: `app/ui/theme.py`.

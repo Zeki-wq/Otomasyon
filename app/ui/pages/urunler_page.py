@@ -1,0 +1,600 @@
+"""
+Ürün Yönetimi ve Hızlı Arama Sayfası
+50.000 kaleme kadar anlık filtreleme, sayfalama, ekleme, düzenleme ve pasife alma.
+"""
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QCheckBox,
+    QMessageBox, QDialog, QFormLayout, QSpinBox, QTextEdit, QFrame
+)
+from app.domain.models import Urun
+from app.domain.money import kurus_to_tl_str, tl_str_to_kurus
+from app.services.urun_servisi import UrunServisi
+from app.services.stok_servisi import StokServisi
+
+
+class UrunDiyalog(QDialog):
+    """Yeni ürün ekleme ve mevcut ürünü düzenleme diyaloğu."""
+
+    def __init__(self, parent=None, urun_servisi: UrunServisi = None, urun: Urun = None):
+        super().__init__(parent)
+        self.urun_servisi = urun_servisi
+        self.urun = urun
+        self.setWindowTitle("Ürün Düzenle" if urun else "Yeni Ürün Ekle")
+        self.resize(550, 600)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+
+        # Başlık
+        baslik = QLabel("✏️ ÜRÜN BİLGİLERİ" if self.urun else "📦 YENİ PARÇA KAYDI")
+        baslik.setObjectName("headerTitle")
+        layout.addWidget(baslik)
+
+        form_frame = QFrame()
+        form_frame.setObjectName("cardFrame")
+        form_layout = QFormLayout(form_frame)
+        form_layout.setSpacing(10)
+
+        self.txt_kod = QLineEdit()
+        self.txt_kod.setPlaceholderText("Örn: BRM-001")
+        form_layout.addRow("Parça Kodu (*):", self.txt_kod)
+
+        self.txt_ad = QLineEdit()
+        self.txt_ad.setPlaceholderText("Örn: Ön Fren Diski Havalandırmalı")
+        form_layout.addRow("Parça Adı (*):", self.txt_ad)
+
+        self.txt_barkod = QLineEdit()
+        self.txt_barkod.setPlaceholderText("Barkod okutun veya yazın")
+        form_layout.addRow("Barkod:", self.txt_barkod)
+
+        self.txt_oem = QLineEdit()
+        self.txt_oem.setPlaceholderText("Örn: 1K0615301T")
+        form_layout.addRow("OEM Numarası:", self.txt_oem)
+
+        # Marka ve Kategori Seçimi
+        marka_layout = QHBoxLayout()
+        self.cmb_marka = QComboBox()
+        self.btn_yeni_marka = QPushButton("+")
+        self.btn_yeni_marka.setFixedWidth(35)
+        self.btn_yeni_marka.clicked.connect(self.yeni_marka_ekle)
+        marka_layout.addWidget(self.cmb_marka)
+        marka_layout.addWidget(self.btn_yeni_marka)
+        form_layout.addRow("Marka:", marka_layout)
+
+        kat_layout = QHBoxLayout()
+        self.cmb_kat = QComboBox()
+        self.btn_yeni_kat = QPushButton("+")
+        self.btn_yeni_kat.setFixedWidth(35)
+        self.btn_yeni_kat.clicked.connect(self.yeni_kategori_ekle)
+        kat_layout.addWidget(self.cmb_kat)
+        kat_layout.addWidget(self.btn_yeni_kat)
+        form_layout.addRow("Kategori:", kat_layout)
+
+        # Fiyat ve KDV
+        fiyat_layout = QHBoxLayout()
+        self.txt_alis = QLineEdit()
+        self.txt_alis.setPlaceholderText("0,00 ₺")
+        self.txt_satis = QLineEdit()
+        self.txt_satis.setPlaceholderText("0,00 ₺")
+        fiyat_layout.addWidget(QLabel("Alış:"))
+        fiyat_layout.addWidget(self.txt_alis)
+        fiyat_layout.addWidget(QLabel("Satış (*):"))
+        fiyat_layout.addWidget(self.txt_satis)
+        form_layout.addRow("Fiyatlar:", fiyat_layout)
+
+        kdv_stok_layout = QHBoxLayout()
+        self.spn_kdv = QSpinBox()
+        self.spn_kdv.setRange(0, 100)
+        self.spn_kdv.setValue(20)
+        self.spn_kdv.setSuffix(" %")
+
+        self.spn_stok = QSpinBox()
+        self.spn_stok.setRange(0, 100000)
+        self.spn_stok.setValue(0)
+        # Düzenleme modunda açılış stoğu değiştirilemez (stok düzeltme ile yapılır)
+        if self.urun:
+            self.spn_stok.setEnabled(False)
+
+        self.spn_kritik = QSpinBox()
+        self.spn_kritik.setRange(0, 1000)
+        self.spn_kritik.setValue(5)
+
+        kdv_stok_layout.addWidget(QLabel("KDV:"))
+        kdv_stok_layout.addWidget(self.spn_kdv)
+        kdv_stok_layout.addWidget(QLabel("Açılış Stok:"))
+        kdv_stok_layout.addWidget(self.spn_stok)
+        kdv_stok_layout.addWidget(QLabel("Kritik Stok:"))
+        kdv_stok_layout.addWidget(self.spn_kritik)
+        form_layout.addRow("Stok & Vergi:", kdv_stok_layout)
+
+        self.txt_raf = QLineEdit()
+        self.txt_raf.setPlaceholderText("Örn: A-12 / Raf 3")
+        form_layout.addRow("Raf / Konum:", self.txt_raf)
+
+        self.txt_aciklama = QTextEdit()
+        self.txt_aciklama.setMaximumHeight(60)
+        self.txt_aciklama.setPlaceholderText("Uyumlu araçlar veya ek notlar...")
+        form_layout.addRow("Açıklama:", self.txt_aciklama)
+
+        layout.addWidget(form_frame)
+
+        # Butonlar
+        btn_layout = QHBoxLayout()
+        self.btn_kaydet = QPushButton("💾 Kaydet")
+        self.btn_kaydet.setObjectName("btnSuccess")
+        self.btn_kaydet.clicked.connect(self.kaydet)
+
+        self.btn_iptal = QPushButton("İptal")
+        self.btn_iptal.setObjectName("btnSecondary")
+        self.btn_iptal.clicked.connect(self.reject)
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.btn_iptal)
+        btn_layout.addWidget(self.btn_kaydet)
+        layout.addLayout(btn_layout)
+
+        self.markalari_doldur()
+        self.kategorileri_doldur()
+
+        # Düzenleme modundaysa mevcut verileri doldur
+        if self.urun:
+            self.verileri_yukle()
+
+    def markalari_doldur(self):
+        self.cmb_marka.clear()
+        self.cmb_marka.addItem("Seçiniz...", None)
+        if self.urun_servisi:
+            for m in self.urun_servisi.markalari_getir():
+                self.cmb_marka.addItem(m.ad, m.id)
+
+    def kategorileri_doldur(self):
+        self.cmb_kat.clear()
+        self.cmb_kat.addItem("Seçiniz...", None)
+        if self.urun_servisi:
+            for k in self.urun_servisi.kategorileri_getir():
+                self.cmb_kat.addItem(k.ad, k.id)
+
+    def yeni_marka_ekle(self):
+        ad, ok = QtWidgets.QInputDialog.getText(self, "Yeni Marka", "Marka Adı:")
+        if ok and ad.strip():
+            try:
+                yeni_id = self.urun_servisi.marka_ekle(ad.strip())
+                self.markalari_doldur()
+                index = self.cmb_marka.findData(yeni_id)
+                if index >= 0:
+                    self.cmb_marka.setCurrentIndex(index)
+            except Exception as e:
+                QMessageBox.warning(self, "Hata", str(e))
+
+    def yeni_kategori_ekle(self):
+        ad, ok = QtWidgets.QInputDialog.getText(self, "Yeni Kategori", "Kategori Adı:")
+        if ok and ad.strip():
+            try:
+                yeni_id = self.urun_servisi.kategori_ekle(ad.strip())
+                self.kategorileri_doldur()
+                index = self.cmb_kat.findData(yeni_id)
+                if index >= 0:
+                    self.cmb_kat.setCurrentIndex(index)
+            except Exception as e:
+                QMessageBox.warning(self, "Hata", str(e))
+
+    def verileri_yukle(self):
+        self.txt_kod.setText(self.urun.parca_kodu)
+        self.txt_ad.setText(self.urun.ad)
+        self.txt_barkod.setText(self.urun.barkod)
+        self.txt_oem.setText(self.urun.oem_no)
+
+        m_idx = self.cmb_marka.findData(self.urun.marka_id)
+        if m_idx >= 0:
+            self.cmb_marka.setCurrentIndex(m_idx)
+
+        k_idx = self.cmb_kat.findData(self.urun.kategori_id)
+        if k_idx >= 0:
+            self.cmb_kat.setCurrentIndex(k_idx)
+
+        self.txt_alis.setText(kurus_to_tl_str(self.urun.alis_fiyati_kurus, sembol=False))
+        self.txt_satis.setText(kurus_to_tl_str(self.urun.satis_fiyati_kurus, sembol=False))
+        self.spn_kdv.setValue(self.urun.kdv_orani)
+        self.spn_stok.setValue(self.urun.stok)
+        self.spn_kritik.setValue(self.urun.kritik_stok)
+        self.txt_raf.setText(self.urun.raf_yeri)
+        self.txt_aciklama.setPlainText(self.urun.aciklama)
+
+    def kaydet(self):
+        kod = self.txt_kod.text().strip().upper()
+        ad = self.txt_ad.text().strip()
+
+        if not kod:
+            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen bir parça kodu giriniz.")
+            self.txt_kod.setFocus()
+            return
+
+        if not ad:
+            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen bir parça adı giriniz.")
+            self.txt_ad.setFocus()
+            return
+
+        alis_kurus = tl_str_to_kurus(self.txt_alis.text())
+        satis_kurus = tl_str_to_kurus(self.txt_satis.text())
+
+        if satis_kurus <= 0:
+            QMessageBox.warning(self, "Geçersiz Fiyat", "Satış fiyatı 0'dan büyük olmalıdır.")
+            self.txt_satis.setFocus()
+            return
+
+        kategori_id = self.cmb_kat.currentData()
+        marka_id = self.cmb_marka.currentData()
+
+        try:
+            if self.urun:
+                # Güncelleme
+                self.urun.parca_kodu = kod
+                self.urun.ad = ad
+                self.urun.barkod = self.txt_barkod.text().strip()
+                self.urun.oem_no = self.txt_oem.text().strip().upper()
+                self.urun.kategori_id = kategori_id
+                self.urun.marka_id = marka_id
+                self.urun.alis_fiyati_kurus = alis_kurus
+                self.urun.satis_fiyati_kurus = satis_kurus
+                self.urun.kdv_orani = self.spn_kdv.value()
+                self.urun.kritik_stok = self.spn_kritik.value()
+                self.urun.raf_yeri = self.txt_raf.text().strip()
+                self.urun.aciklama = self.txt_aciklama.toPlainText().strip()
+
+                self.urun_servisi.urun_guncelle(self.urun)
+                QMessageBox.information(self, "Başarılı", "Ürün bilgileri başarıyla güncellendi.")
+            else:
+                # Yeni Ekleme
+                yeni = Urun(
+                    id=None,
+                    parca_kodu=kod,
+                    ad=ad,
+                    barkod=self.txt_barkod.text().strip(),
+                    oem_no=self.txt_oem.text().strip().upper(),
+                    kategori_id=kategori_id,
+                    marka_id=marka_id,
+                    alis_fiyati_kurus=alis_kurus,
+                    satis_fiyati_kurus=satis_kurus,
+                    kdv_orani=self.spn_kdv.value(),
+                    stok=self.spn_stok.value(),
+                    kritik_stok=self.spn_kritik.value(),
+                    raf_yeri=self.txt_raf.text().strip(),
+                    aciklama=self.txt_aciklama.toPlainText().strip()
+                )
+                self.urun_servisi.urun_ekle(yeni)
+                QMessageBox.information(self, "Başarılı", f"'{ad}' başarıyla depoya eklendi.")
+
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", str(e))
+
+
+class UrunlerPage(QWidget):
+    """Parça ve Ürün Yönetimi Ana Ekranı."""
+
+    def __init__(self, urun_servisi: UrunServisi, stok_servisi: StokServisi, aktif_kullanici=None, parent=None):
+        super().__init__(parent)
+        self.urun_servisi = urun_servisi
+        self.stok_servisi = stok_servisi
+        self.aktif_kullanici = aktif_kullanici
+
+        self.sayfa_no = 1
+        self.sayfa_boyutu = 50
+        self.toplam_urun = 0
+
+        # Hızlı arama için geciktirme sayacı (debouncing)
+        self.arama_timer = QtCore.QTimer()
+        self.arama_timer.setSingleShot(True)
+        self.arama_timer.setInterval(250)
+        self.arama_timer.timeout.connect(self.listeyi_guncelle)
+
+        self.init_ui()
+        self.filtreleri_doldur()
+        self.listeyi_guncelle()
+
+    def init_ui(self):
+        ana_layout = QVBoxLayout(self)
+        ana_layout.setContentsMargins(15, 15, 15, 15)
+        ana_layout.setSpacing(12)
+
+        # 1. Üst Başlık ve İstatistik Çubuğu
+        ust_bar = QHBoxLayout()
+        baslik = QLabel("📦 PARÇA VE DEPO YÖNETİMİ")
+        baslik.setObjectName("headerTitle")
+        ust_bar.addWidget(baslik)
+        ust_bar.addStretch()
+
+        self.lbl_ozet = QLabel("Yükleniyor...")
+        self.lbl_ozet.setStyleSheet("color: #00a8ff; font-weight: bold;")
+        ust_bar.addWidget(self.lbl_ozet)
+
+        self.btn_yeni_urun = QPushButton("➕ Yeni Ürün Ekle")
+        self.btn_yeni_urun.setObjectName("btnSuccess")
+        self.btn_yeni_urun.clicked.connect(self.yeni_urun_ac)
+        ust_bar.addWidget(self.btn_yeni_urun)
+
+        ana_layout.addLayout(ust_bar)
+
+        # 2. Arama ve Filtreleme Kartı
+        filtre_kart = QFrame()
+        filtre_kart.setObjectName("filterFrame")
+        filtre_layout = QHBoxLayout(filtre_kart)
+        filtre_layout.setContentsMargins(10, 8, 10, 8)
+        filtre_layout.setSpacing(10)
+
+        self.txt_ara = QLineEdit()
+        self.txt_ara.setPlaceholderText("🔍 Parça kodu, ad, OEM, barkod veya marka ile hızlı ara... (Enter)")
+        self.txt_ara.textChanged.connect(self.arama_tetikle)
+        self.txt_ara.returnPressed.connect(self.listeyi_guncelle)
+        filtre_layout.addWidget(self.txt_ara, stretch=4)
+
+        self.cmb_filtre_kat = QComboBox()
+        self.cmb_filtre_kat.currentIndexChanged.connect(self.filtre_degisti)
+        filtre_layout.addWidget(self.cmb_filtre_kat, stretch=2)
+
+        self.cmb_filtre_marka = QComboBox()
+        self.cmb_filtre_marka.currentIndexChanged.connect(self.filtre_degisti)
+        filtre_layout.addWidget(self.cmb_filtre_marka, stretch=2)
+
+        self.chk_aktif = QCheckBox("Sadece Aktifler")
+        self.chk_aktif.setChecked(True)
+        self.chk_aktif.stateChanged.connect(self.filtre_degisti)
+        filtre_layout.addWidget(self.chk_aktif)
+
+        self.btn_temizle = QPushButton("Temizle")
+        self.btn_temizle.setObjectName("btnSecondary")
+        self.btn_temizle.clicked.connect(self.filtreleri_temizle)
+        filtre_layout.addWidget(self.btn_temizle)
+
+        ana_layout.addWidget(filtre_kart)
+
+        # 3. Ürün Tablosu
+        self.tablo = QTableWidget()
+        self.tablo.setColumnCount(13)
+        self.tablo.setHorizontalHeaderLabels([
+            "ID", "Parça Kodu", "Barkod", "OEM No", "Ürün Adı",
+            "Marka", "Kategori", "Raf", "Alış (₺)", "Satış (₺)",
+            "KDV", "Stok", "Durum"
+        ])
+        self.tablo.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tablo.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.tablo.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tablo.setAlternatingRowColors(True)
+        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.tablo.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)  # Ürün adı uzasın
+        self.tablo.doubleClicked.connect(self.urun_duzenle_ac)
+        ana_layout.addWidget(self.tablo)
+
+        # 4. Alt İşlem Çubuğu ve Sayfalama
+        alt_bar = QHBoxLayout()
+
+        self.btn_duzenle = QPushButton("✏️ Düzenle")
+        self.btn_duzenle.clicked.connect(self.urun_duzenle_ac)
+        alt_bar.addWidget(self.btn_duzenle)
+
+        self.btn_stok_duzelt = QPushButton("📦 Stok Düzelt")
+        self.btn_stok_duzelt.setObjectName("btnSecondary")
+        self.btn_stok_duzelt.clicked.connect(self.stok_duzelt_ac)
+        alt_bar.addWidget(self.btn_stok_duzelt)
+
+        self.btn_sil = QPushButton("🗑️ Pasife Al")
+        self.btn_sil.setObjectName("btnDanger")
+        self.btn_sil.clicked.connect(self.urun_pasife_al)
+        alt_bar.addWidget(self.btn_sil)
+
+        alt_bar.addStretch()
+
+        # Sayfalama
+        self.btn_onceki = QPushButton("◀ Önceki")
+        self.btn_onceki.clicked.connect(self.onceki_sayfa)
+        alt_bar.addWidget(self.btn_onceki)
+
+        self.lbl_sayfa = QLabel("Sayfa 1 / 1")
+        self.lbl_sayfa.setStyleSheet("font-weight: bold; padding: 0 10px;")
+        alt_bar.addWidget(self.lbl_sayfa)
+
+        self.btn_sonraki = QPushButton("Sonraki ▶")
+        self.btn_sonraki.clicked.connect(self.sonraki_sayfa)
+        alt_bar.addWidget(self.btn_sonraki)
+
+        ana_layout.addLayout(alt_bar)
+
+    def filtreleri_doldur(self):
+        self.cmb_filtre_kat.blockSignals(True)
+        self.cmb_filtre_marka.blockSignals(True)
+
+        self.cmb_filtre_kat.clear()
+        self.cmb_filtre_kat.addItem("Tüm Kategoriler", None)
+        for k in self.urun_servisi.kategorileri_getir():
+            self.cmb_filtre_kat.addItem(k.ad, k.id)
+
+        self.cmb_filtre_marka.clear()
+        self.cmb_filtre_marka.addItem("Tüm Markalar", None)
+        for m in self.urun_servisi.markalari_getir():
+            self.cmb_filtre_marka.addItem(m.ad, m.id)
+
+        self.cmb_filtre_kat.blockSignals(False)
+        self.cmb_filtre_marka.blockSignals(False)
+
+    def arama_tetikle(self):
+        self.arama_timer.start()
+
+    def filtre_degisti(self):
+        self.sayfa_no = 1
+        self.listeyi_guncelle()
+
+    def filtreleri_temizle(self):
+        self.txt_ara.clear()
+        self.cmb_filtre_kat.setCurrentIndex(0)
+        self.cmb_filtre_marka.setCurrentIndex(0)
+        self.chk_aktif.setChecked(True)
+        self.sayfa_no = 1
+        self.listeyi_guncelle()
+
+    def listeyi_guncelle(self):
+        terim = self.txt_ara.text().strip()
+        kat_id = self.cmb_filtre_kat.currentData()
+        marka_id = self.cmb_filtre_marka.currentData()
+        sadece_aktif = self.chk_aktif.isChecked()
+
+        self.toplam_urun = self.urun_servisi.toplam_urun_sayisi(
+            terim=terim,
+            kategori_id=kat_id,
+            marka_id=marka_id,
+            sadece_aktif=sadece_aktif
+        )
+
+        toplam_sayfa = max(1, (self.toplam_urun + self.sayfa_boyutu - 1) // self.sayfa_boyutu)
+        if self.sayfa_no > toplam_sayfa:
+            self.sayfa_no = toplam_sayfa
+
+        offset = (self.sayfa_no - 1) * self.sayfa_boyutu
+
+        urunler = self.urun_servisi.urun_ara(
+            terim=terim,
+            kategori_id=kat_id,
+            marka_id=marka_id,
+            sadece_aktif=sadece_aktif,
+            limit=self.sayfa_boyutu,
+            offset=offset
+        )
+
+        # Tabloyu doldur
+        self.tablo.setRowCount(0)
+        for satir_idx, u in enumerate(urunler):
+            self.tablo.insertRow(satir_idx)
+
+            self.tablo.setItem(satir_idx, 0, QTableWidgetItem(str(u.id)))
+            self.tablo.setItem(satir_idx, 1, QTableWidgetItem(u.parca_kodu))
+            self.tablo.setItem(satir_idx, 2, QTableWidgetItem(u.barkod))
+            self.tablo.setItem(satir_idx, 3, QTableWidgetItem(u.oem_no))
+            self.tablo.setItem(satir_idx, 4, QTableWidgetItem(u.ad))
+            self.tablo.setItem(satir_idx, 5, QTableWidgetItem(u.marka_adi))
+            self.tablo.setItem(satir_idx, 6, QTableWidgetItem(u.kategori_adi))
+            self.tablo.setItem(satir_idx, 7, QTableWidgetItem(u.raf_yeri))
+            self.tablo.setItem(satir_idx, 8, QTableWidgetItem(kurus_to_tl_str(u.alis_fiyati_kurus)))
+            self.tablo.setItem(satir_idx, 9, QTableWidgetItem(kurus_to_tl_str(u.satis_fiyati_kurus)))
+            self.tablo.setItem(satir_idx, 10, QTableWidgetItem(f"%{u.kdv_orani}"))
+
+            # Stok hücresi (Kritikse uyar)
+            stok_item = QTableWidgetItem(str(u.stok))
+            if u.stok <= u.kritik_stok:
+                stok_item.setForeground(QtGui.QColor("#ff4757"))
+                stok_item.setToolTip(f"Kritik stok seviyesinde! (Kritik: {u.kritik_stok})")
+            self.tablo.setItem(satir_idx, 11, stok_item)
+
+            durum_str = "Aktif" if u.aktif == 1 else "Pasif"
+            durum_item = QTableWidgetItem(durum_str)
+            if u.aktif == 0:
+                durum_item.setForeground(QtGui.QColor("#718093"))
+            self.tablo.setItem(satir_idx, 12, durum_item)
+
+        # Sayfalama butonları
+        self.lbl_sayfa.setText(f"Sayfa {self.sayfa_no} / {toplam_sayfa}")
+        self.btn_onceki.setEnabled(self.sayfa_no > 1)
+        self.btn_sonraki.setEnabled(self.sayfa_no < toplam_sayfa)
+
+        # Özet bilgi
+        kritik_sayisi = self.stok_servisi.kritik_stok_sayisi()
+        self.lbl_ozet.setText(f"Toplam: {self.toplam_urun} Ürün  |  ⚠️ Kritik Stok: {kritik_sayisi}")
+
+    def onceki_sayfa(self):
+        if self.sayfa_no > 1:
+            self.sayfa_no -= 1
+            self.listeyi_guncelle()
+
+    def sonraki_sayfa(self):
+        self.sayfa_no += 1
+        self.listeyi_guncelle()
+
+    def secili_urun_id(self):
+        secili = self.tablo.selectedItems()
+        if not secili:
+            return None
+        satir = secili[0].row()
+        return int(self.tablo.item(satir, 0).text())
+
+    def yeni_urun_ac(self):
+        diyalog = UrunDiyalog(self, self.urun_servisi)
+        if diyalog.exec_() == QDialog.Accepted:
+            self.listeyi_guncelle()
+
+    def urun_duzenle_ac(self):
+        u_id = self.secili_urun_id()
+        if not u_id:
+            QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen düzenlemek istediğiniz ürünü seçiniz.")
+            return
+
+        urun = self.urun_servisi.urun_getir(u_id)
+        if not urun:
+            QMessageBox.critical(self, "Hata", "Ürün bulunamadı.")
+            return
+
+        diyalog = UrunDiyalog(self, self.urun_servisi, urun)
+        if diyalog.exec_() == QDialog.Accepted:
+            self.listeyi_guncelle()
+
+    def urun_pasife_al(self):
+        u_id = self.secili_urun_id()
+        if not u_id:
+            QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen pasife almak istediğiniz ürünü seçiniz.")
+            return
+
+        urun = self.urun_servisi.urun_getir(u_id)
+        if not urun:
+            return
+
+        onay = QMessageBox.question(
+            self,
+            "Pasife Alma Onayı",
+            f"'{urun.ad}' ({urun.parca_kodu}) ürününü pasife almak istediğinizden emin misiniz?\n\n"
+            "Not: Geçmiş siparişler ve stok kayıtları korunacaktır.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if onay == QMessageBox.Yes:
+            self.urun_servisi.urun_pasife_al(u_id)
+            QMessageBox.information(self, "Başarılı", "Ürün pasife alındı.")
+            self.listeyi_guncelle()
+
+    def stok_duzelt_ac(self):
+        u_id = self.secili_urun_id()
+        if not u_id:
+            QMessageBox.warning(self, "Seçim Yapılmadı", "Lütfen stok miktarını düzeltmek istediğiniz ürünü seçiniz.")
+            return
+
+        urun = self.urun_servisi.urun_getir(u_id)
+        if not urun:
+            return
+
+        yeni_stok, ok = QtWidgets.QInputDialog.getInt(
+            self,
+            "Stok Düzeltme",
+            f"'{urun.ad}' güncel sayım stoğunu giriniz (Mevcut: {urun.stok}):",
+            value=urun.stok,
+            min=0,
+            max=100000
+        )
+        if ok:
+            neden, ok_neden = QtWidgets.QInputDialog.getText(
+                self,
+                "Düzeltme Gerekçesi",
+                "Stok değişim nedenini yazınız (Örn: Sayım fazlası / hasarlı ürün):"
+            )
+            if ok_neden and neden.strip():
+                try:
+                    self.stok_servisi.stok_duzeltme_yap(
+                        urun_id=u_id,
+                        yeni_stok=yeni_stok,
+                        aciklama=neden.strip()
+                    )
+                    QMessageBox.information(self, "Başarılı", f"Stok {yeni_stok} adet olarak güncellendi.")
+                    self.listeyi_guncelle()
+                except Exception as e:
+                    QMessageBox.critical(self, "Hata", str(e))

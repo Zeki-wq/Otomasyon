@@ -1,5 +1,5 @@
 """
-GitHub Release Oluşturma ve Tüm Kurulum Paketlerini (Windows, Debian, Fedora) Yükleme Betiği
+GitHub Release Oluşturma ve Tüm Kurulum Paketlerini (Windows, Debian, Fedora RPM) Yükleme Betiği
 (packaging/create_github_release.py)
 """
 
@@ -26,6 +26,7 @@ TAG = "v1.0.0-rc1"
 ASSET_FILES = [
     DIST_INSTALLER / "OtoYedekParca_Setup_v1.0.0.exe",
     DIST_INSTALLER / "otoyedekparca_1.0.0_all.deb",
+    DIST_INSTALLER / "otoyedekparca-1.0.0-1.noarch.rpm",
     DIST_INSTALLER / "otoyedekparca-1.0.0-fedora-installer.tar.gz",
     DIST_INSTALLER / "otoyedekparca-1.0.0.tar.gz",
 ]
@@ -83,15 +84,16 @@ def main():
 
     # Release açıklama metni
     body_text = (
-        f"## Oto Yedek Parça Otomasyonu v1.0.0-rc1\n\n"
+        f"## Oto Yedek Parça Otomasyonu v1.0.0\n\n"
         f"Oto yedek parça satış ve dükkan yönetimi için geliştirilmiş, yüksek performanslı ve %100 çevrimdışı çalışabilen masaüstü otomasyon paketi.\n\n"
         f"### 📦 İndirme ve Kurulum Paketleri\n\n"
-        f"| Platform / Dağıtım | Dosya Adı | Boyut | Açıklama |\n"
-        f"| :--- | :--- | :--- | :--- |\n"
-        f"| **Windows 10/11 (64-bit)** | `OtoYedekParca_Setup_v1.0.0.exe` | ~46.5 MB | Inno Setup kurulum sihirbazı (Non-destructive) |\n"
-        f"| **Debian / Ubuntu / Mint** | `otoyedekparca_1.0.0_all.deb` | ~0.1 MB | Standart .deb paketi (`sudo apt install ./...`) |\n"
-        f"| **Fedora / RHEL / CentOS** | `otoyedekparca-1.0.0-fedora-installer.tar.gz` | ~0.1 MB | Otomatik `install.sh` betikli Fedora paketi |\n"
-        f"| **Fedora RPM Kaynak** | `otoyedekparca-1.0.0.tar.gz` | ~0.1 MB | `rpmbuild` ile doğrudan RPM derleme paketi |\n\n"
+        f"| Platform / Dağıtım | Paket Formatı | Dosya Adı | Boyut | Kurulum Komutu |\n"
+        f"| :--- | :--- | :--- | :--- | :--- |\n"
+        f"| **Windows 10/11 (64-bit)** | Setup Sihirbazı | `OtoYedekParca_Setup_v1.0.0.exe` | ~46.5 MB | Çift tıklayarak kurun |\n"
+        f"| **Debian / Ubuntu / Mint** | Standart `.deb` | `otoyedekparca_1.0.0_all.deb` | ~0.07 MB | `sudo apt install ./otoyedekparca_1.0.0_all.deb` |\n"
+        f"| **Fedora / RHEL / CentOS** | Resmi `.rpm` | `otoyedekparca-1.0.0-1.noarch.rpm` | ~0.07 MB | `sudo dnf install ./otoyedekparca-1.0.0-1.noarch.rpm` |\n"
+        f"| **Fedora / RHEL Çevrimdışı** | Installer Tarball | `otoyedekparca-1.0.0-fedora-installer.tar.gz` | ~0.07 MB | `sudo ./install.sh` |\n"
+        f"| **Fedora RPM Kaynak** | Source Tarball | `otoyedekparca-1.0.0.tar.gz` | ~0.07 MB | `rpmbuild -ba otoyedekparca.spec` |\n\n"
         f"### 🔐 Dosya Doğrulama Özetleri (SHA-256)\n"
     )
     for asset_path, size_mb, sha in available_assets:
@@ -123,7 +125,7 @@ def main():
         else:
             raise
 
-    # 2. Release oluştur veya güncelle
+    # 2. Release oluştur veya güncelle (prerelease: False yaparak resmi sürüm yapıyoruz)
     if not release:
         create_url = f"https://api.github.com/repos/{REPO}/releases"
         payload = {
@@ -132,7 +134,7 @@ def main():
             "name": f"Oto Yedek Parça Otomasyonu {TAG}",
             "body": body_text,
             "draft": False,
-            "prerelease": True
+            "prerelease": False
         }
         create_req = urllib.request.Request(
             create_url,
@@ -143,11 +145,11 @@ def main():
             release = json.loads(r.read())
             print(f"  [+] Yeni Release oluşturuldu: ID {release['id']}")
     else:
-        # Açıklama metnini güncelle
         patch_url = f"https://api.github.com/repos/{REPO}/releases/{release['id']}"
         patch_payload = {
             "name": f"Oto Yedek Parça Otomasyonu {TAG}",
-            "body": body_text
+            "body": body_text,
+            "prerelease": False
         }
         patch_req = urllib.request.Request(
             patch_url,
@@ -157,23 +159,21 @@ def main():
         )
         with urllib.request.urlopen(patch_req) as r:
             release = json.loads(r.read())
-            print("  [+] Release açıklama metni güncellendi.")
+            print("  [+] Release açıklama metni ve durumu güncellendi (Official Release).")
 
     upload_url_template = release.get("upload_url", "")
     upload_url = upload_url_template.split("{")[0]
 
-    # Mevcut assetleri haritala
     existing_assets = {a["name"]: a["id"] for a in release.get("assets", [])}
 
     # 3. Dosyaları release'e yükle
     uploaded_assets_info = []
     print("\n" + "=" * 70)
-    print("📤 DOSYALAR GITHUB RELEASE'E YÜKLENİYOR")
+    print("📤 TÜM PAKETLER GITHUB RELEASE'E YÜKLENİYOR")
     print("=" * 70)
 
     for asset_path, size_mb, sha in available_assets:
         fname = asset_path.name
-        # Varsa eskiyi sil
         if fname in existing_assets:
             print(f"[*] Eski '{fname}' siliniyor (Asset ID: {existing_assets[fname]})...")
             del_url = f"https://api.github.com/repos/{REPO}/releases/assets/{existing_assets[fname]}"
@@ -182,7 +182,6 @@ def main():
                 pass
             print(f"  [+] Eski asset silindi: {fname}")
 
-        # Yükle
         print(f"[*] Yükleniyor: {fname} ({size_mb:.2f} MB)...")
         target_upload_url = f"{upload_url}?name={urllib.parse.quote(fname)}"
         with open(asset_path, "rb") as f:
